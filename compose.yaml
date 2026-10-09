@@ -1,0 +1,9 @@
+services:
+  tsolive:
+    build: .
+    container_name: tsolive
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "80:80"
