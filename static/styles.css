@@ -44,3 +44,6 @@ main{padding-top:30px}
 @media(max-width:1250px){.tile-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:800px){.tile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.tile-grid{grid-template-columns:1fr}}
+
+/* Separate the overview heading from the status tiles. */
+.section-heading{padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:18px}
