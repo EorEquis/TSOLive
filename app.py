@@ -7,6 +7,7 @@
 ###########################################################################
 
 import asyncio
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -152,7 +153,7 @@ def _read_sgp_camera():
         except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
             pass
     return {"success": True, "state": state, "connected": state != "DISCONNECTED",
-            "temperature_c": temperature, "timestamp_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}
+            "temperature_c": temperature, "timestamp_utc": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/api/sgp/camera")
