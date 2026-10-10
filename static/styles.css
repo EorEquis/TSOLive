@@ -83,3 +83,19 @@ main{padding-top:30px}
 .details-values dd{margin:0;font-size:13px;font-weight:650;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
 .details-note{font-size:11px;color:var(--subtle);margin:18px 0 0}
 @media(max-width:700px){.details-grid{grid-template-columns:1fr}.details-hero{padding:22px;align-items:flex-start;flex-direction:column}.details-hero-meta{align-items:flex-start}.details-position{font-size:36px}.details-heading h2{font-size:21px}.details-home{padding:9px 10px}.details-panel{padding:18px}}
+
+/* Compact Roof details on desktop without sacrificing telemetry fields. */
+@media(min-width:701px){
+  .details-main{padding-top:17px}
+  .details-heading{padding-bottom:12px;margin-bottom:12px}
+  .details-hero{padding:14px 22px;margin-bottom:12px}
+  .details-position{font-size:35px;margin-top:5px}
+  .details-hero-meta{gap:5px}
+  .details-grid{gap:12px}
+  .details-panel{padding:13px 18px}
+  .details-panel h3{font-size:14px;padding-bottom:9px}
+  .details-values>div{padding:8px 0}
+  .details-values dt{font-size:11px}
+  .details-values dd{font-size:12px}
+  .details-main+.page-footer{margin-top:14px;padding:10px 0 12px}
+}
