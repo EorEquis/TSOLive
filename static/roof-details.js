@@ -34,8 +34,7 @@
     render(data, put) {
       const t = data.telemetry;
       const c = data.controller || {};
-      put("roof-position", position(t, c));
-      put("roof-last-update", data.timestamp_utc.slice(0, 19).replace("T", " ") + "Z");
+      put("details-primary", position(t, c));
       put("controller-state", c.state);
       put("movement-allowed", typeof c.movement_allowed === "boolean" ? (c.movement_allowed ? "YES" : "NO") : "—");
       put("controller-reason", c.reason || "None");
