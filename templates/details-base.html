@@ -21,11 +21,11 @@
     <main class="details-main">
       <div class="section-heading details-heading">
         <div><p class="eyebrow">OBSERVATORY / {{ system_label | upper }}</p></div>
-        <span class="device-tag offline details-connection" id="roof-connection"><span class="status-dot offline-dot" id="roof-connection-dot"></span><span id="roof-connection-text">OFFLINE</span></span>
+        <span class="device-tag offline details-connection" id="details-connection"><span class="status-dot offline-dot" id="details-connection-dot"></span><span id="details-connection-text">OFFLINE</span></span>
       </div>
       <section class="details-hero" aria-label="{{ system_label }} summary">
-        <div><p class="metric-label">{% block primary_label %}STATUS{% endblock %}</p><p class="details-position" id="roof-position">—</p></div>
-        <div class="details-hero-meta"><span class="metric-label">LAST UPDATE (UTC)</span><strong id="roof-last-update">—</strong></div>
+        <div><p class="metric-label">{% block primary_label %}STATUS{% endblock %}</p><p class="details-position" id="details-primary">—</p></div>
+        <div class="details-hero-meta"><span class="metric-label">LAST UPDATE (UTC)</span><strong id="details-last-update">—</strong></div>
       </section>
       <div class="details-grid">
         {% block panels %}{% endblock %}
