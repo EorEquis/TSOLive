@@ -15,14 +15,10 @@
         <img class="brand-logo" src="/static/tso-logo.png" alt="TriStar Observatory logo" width="76" height="76">
         <div><p class="eyebrow">TRISTAR OBSERVATORY</p><h1>TSO<span>Live</span></h1><div id="clock" class="header-clock" aria-label="Current UTC time"></div></div>
       </div>
-      
+      <nav class="overview-breadcrumb" aria-label="Breadcrumb">OBSERVATORY</nav>
     </header>
 
     <main>
-      <div class="section-heading">
-        <div><p class="eyebrow">OBSERVATORY OVERVIEW</p></div>
-        <div class="demo-pill"><span class="demo-dot"></span> DEMONSTRATION DATA</div>
-      </div>
 {% from "_system_tile.html" import render_tile %}
       <section class="tile-grid" aria-label="Observatory systems">
         {% for tile in systems %}
