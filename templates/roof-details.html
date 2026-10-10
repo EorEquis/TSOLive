@@ -1,0 +1,43 @@
+{% extends "details-base.html" %}
+{% block title %}Roof Details{% endblock %}
+{% block system_scripts %}<script src="/static/roof-details.js" defer></script>{% endblock %}
+{% block primary_label %}ROOF POSITION{% endblock %}
+{% block panels %}
+
+        <section class="details-panel">
+          <h3>Controller Status</h3>
+          <dl class="details-values">
+            <div><dt>State</dt><dd id="controller-state">—</dd></div>
+            <div><dt>Movement allowed</dt><dd id="movement-allowed">—</dd></div>
+            <div><dt>Safety reason</dt><dd id="controller-reason">—</dd></div>
+            <div><dt>Error status</dt><dd id="error-status">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="details-panel">
+          <h3>Limit Switches</h3>
+          <dl class="details-values">
+            <div><dt>Open limit</dt><dd id="open-limit">—</dd></div>
+            <div><dt>Closed limit</dt><dd id="closed-limit">—</dd></div>
+            <div><dt>Raw limit status</dt><dd id="limit-status">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="details-panel">
+          <h3>Motor</h3>
+          <dl class="details-values">
+            <div><dt>Target speed</dt><dd id="target-speed">—</dd></div>
+            <div><dt>Current speed</dt><dd id="current-speed">—</dd></div>
+            <div><dt>Motor current</dt><dd id="motor-current">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="details-panel">
+          <h3>Controller Diagnostics</h3>
+          <dl class="details-values">
+            <div><dt>Input voltage</dt><dd id="input-voltage">—</dd></div>
+            <div><dt>Temperature</dt><dd id="temperature">—</dd></div>
+            <div><dt>Controller uptime</dt><dd id="uptime">—</dd></div>
+          </dl>
+        </section>
+{% endblock %}

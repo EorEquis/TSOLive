@@ -15,45 +15,17 @@
         <img class="brand-logo" src="/static/tso-logo.png" alt="TriStar Observatory logo" width="76" height="76">
         <div><p class="eyebrow">TRISTAR OBSERVATORY</p><h1>TSO<span>Live</span></h1><div id="clock" class="header-clock" aria-label="Current UTC time"></div></div>
       </div>
-      
+      <nav class="overview-breadcrumb" aria-label="Breadcrumb">OBSERVATORY</nav>
     </header>
 
     <main>
-      <div class="section-heading">
-        <div><p class="eyebrow">OBSERVATORY OVERVIEW</p></div>
-        <div class="demo-pill"><span class="demo-dot"></span> DEMONSTRATION DATA</div>
-      </div>
-<section class="tile-grid" aria-label="Observatory systems">
-        <article class="tile" tabindex="0" aria-label="Roof system details, coming soon">
-          <div class="tile-head"><div class="tile-title"><span class="tile-icon" aria-hidden="true">⌂</span><div class="tile-name"><h3>Roof</h3><div class="tile-update">Last Update : 2026-10-10 00:39:42Z</div></div></div><span class="device-tag"><span class="status-dot"></span>ONLINE</span></div>
-          <div class="tile-body"><p class="big-status">OPEN</p></div>
-          <div class="tile-foot"><span>Source : RoofRunner</span><span class="foot-right">DETAILS <span aria-hidden="true">↗</span></span></div>
-        </article>
-
-        <article class="tile" tabindex="0" aria-label="Telescope system details, coming soon">
-          <div class="tile-head"><div class="tile-title"><span class="tile-icon" aria-hidden="true">◎</span><div class="tile-name"><h3>Telescope</h3><div class="tile-update">Last Update : 2026-10-10 00:39:55Z</div></div></div><span class="device-tag"><span class="status-dot"></span>ONLINE</span></div>
-          <div class="tile-body"><p class="big-status">TRACKING</p>
-            <div class="readouts"><div><span>RIGHT ASCENSION</span><strong>21h 42m 15s</strong></div><div><span>DECLINATION</span><strong>+43° 18′ 22″</strong></div></div>
-          </div>
-          <div class="tile-foot"><span>Source : Sequence Generator Pro</span><span class="foot-right">DETAILS <span aria-hidden="true">↗</span></span></div>
-        </article>
-
-        <article class="tile" tabindex="0" aria-label="Camera system details, coming soon">
-          <div class="tile-head"><div class="tile-title"><span class="tile-icon" aria-hidden="true">▣</span><div class="tile-name"><h3>Camera</h3><div class="tile-update">Last Update : 2026-10-10 00:39:57Z</div></div></div><span class="device-tag"><span class="status-dot"></span>ONLINE</span></div>
-          <div class="tile-body"><p class="big-status">EXPOSING</p><p class="description">Light</p>
-            <div class="exposure"><div class="exposure-label"><span>EXPOSURE PROGRESS</span><strong>124 / 180 s</strong></div><div class="progress-track" role="progressbar" aria-valuenow="124" aria-valuemin="0" aria-valuemax="180" aria-label="Exposure progress"><div class="progress-fill"></div></div></div>
-            <div class="sensor"><span>SENSOR TEMPERATURE</span><strong>−10.0 °C</strong></div>
-          </div>
-          <div class="tile-foot"><span>Source : Sequence Generator Pro</span><span class="foot-right">DETAILS <span aria-hidden="true">↗</span></span></div>
-        </article>
-        <article class="tile placeholder-tile" aria-label="Future observatory system placeholder">
-          <div class="tile-head"><div class="tile-title"><span class="tile-icon" aria-hidden="true">◇</span><div class="tile-name"><h3>System 4</h3><div class="tile-update">Last Update : 9999-12-31 00:00:00Z</div></div></div><span class="device-tag pending-tag">PLANNED</span></div>
-          <div class="tile-body"><p class="metric-label">FUTURE INTEGRATION</p><p class="big-status pending-status">—</p><p class="description">Telemetry coming later</p></div>
-          <div class="tile-foot"><span>Not configured</span><span class="foot-right">PLACEHOLDER</span></div>
-        </article>
+{% from "_system_tile.html" import render_tile %}
+      <section class="tile-grid" aria-label="Observatory systems">
+        {% for tile in systems %}
+          {{ render_tile(tile) }}
+        {% endfor %}
       </section>
     </main>
-    <footer class="page-footer"><span>TSOLive</span></footer>
   </div>
 </body>
 </html>
