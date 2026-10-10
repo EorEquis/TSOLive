@@ -29,9 +29,30 @@ DETAIL_SYSTEMS = {
 }
 
 
+# Homepage ordering and metadata live here. Shared markup is in _system_tile.html;
+# each system's overview-specific content is in templates/tiles/.
+OVERVIEW_SYSTEMS = [
+    {"id": "roof", "name": "Roof", "icon": "⌂", "source": "RoofRunner",
+     "last_update": "—", "live": True, "details_enabled": True,
+     "aria_label": "Roof system", "body_template": "tiles/roof.html"},
+    {"id": "telescope", "name": "Telescope", "icon": "◎", "source": "Sequence Generator Pro",
+     "last_update": "2026-10-10 00:39:55Z", "live": False, "details_enabled": False,
+     "aria_label": "Telescope system details, coming soon", "body_template": "tiles/telescope.html"},
+    {"id": "camera", "name": "Camera", "icon": "▣", "source": "Sequence Generator Pro",
+     "last_update": "2026-10-10 00:39:57Z", "live": False, "details_enabled": False,
+     "aria_label": "Camera system details, coming soon", "body_template": "tiles/camera.html"},
+    {"id": "system4", "name": "System 4", "icon": "◇", "source": None,
+     "last_update": "9999-12-31 00:00:00Z", "live": False, "details_enabled": False,
+     "placeholder": True, "aria_label": "Future observatory system placeholder",
+     "body_template": "tiles/placeholder.html"},
+]
+
+
 @app.get("/", response_class=HTMLResponse)
-async def homepage():
-    return (BASE_DIR / "templates" / "index.html").read_text(encoding="utf-8")
+async def homepage(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="index.html", context={"systems": OVERVIEW_SYSTEMS}
+    )
 
 
 @app.get("/health")
