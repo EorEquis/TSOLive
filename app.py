@@ -129,7 +129,9 @@ async def roofrunner_telemetry():
 
 
 def _read_sgp_camera():
-    base = os.getenv("SGP_API_URL", "http://192.168.10.100:59590").rstrip("/")
+    base = os.getenv("SGP_API_URL", "").rstrip("/")
+    if not base:
+        raise ValueError("SGP_API_URL is not configured")
 
     def get(operation):
         request = URLRequest(base + "/json/reply/" + operation, method="GET")
