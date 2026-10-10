@@ -12,11 +12,12 @@
   const position = document.getElementById("roof-position");
   const updated = document.getElementById("roof-last-update");
   const connection = document.getElementById("roof-connection");
+  const connectionText = document.getElementById("roof-connection-text");
   const connectionDot = document.getElementById("roof-connection-dot");
   if (!position || !updated || !connection) return;
 
   function setConnection(online) {
-    connection.textContent = online ? "ONLINE" : "OFFLINE";
+    connectionText.textContent = online ? "ONLINE" : "OFFLINE";
     connection.classList.toggle("offline", !online);
     if (connectionDot) connectionDot.classList.toggle("offline-dot", !online);
   }
