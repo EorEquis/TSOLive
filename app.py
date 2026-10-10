@@ -13,13 +13,20 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="TSOLive", description="Read-only observatory telemetry")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+# Detail views share a common layout; each system supplies its own panels and telemetry adapter.
+DETAIL_SYSTEMS = {
+    "roof": {"template": "roof-details.html", "label": "Roof", "source": "RoofRunner"},
+}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -64,7 +71,12 @@ async def roofrunner_telemetry():
 
 
 @app.get("/details", response_class=HTMLResponse)
-async def details(system: str = ""):
-    if system != "roof":
+async def details(request: Request, system: str = ""):
+    config = DETAIL_SYSTEMS.get(system)
+    if config is None:
         return HTMLResponse("Unknown system", status_code=404)
-    return (BASE_DIR / "templates" / "roof-details.html").read_text(encoding="utf-8")
+    return templates.TemplateResponse(
+        request=request,
+        name=config["template"],
+        context={"system_label": config["label"], "source_name": config["source"]},
+    )
