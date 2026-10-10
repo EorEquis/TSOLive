@@ -62,3 +62,53 @@
   }
   startRoofPolling();
 })();
+
+// SGP camera overview: connection, exposure state and sensor temperature.
+(function () {
+  "use strict";
+  const connection = document.getElementById("camera-connection");
+  const connectionText = document.getElementById("camera-connection-text");
+  const connectionDot = document.getElementById("camera-connection-dot");
+  const state = document.getElementById("camera-state");
+  const temperature = document.getElementById("camera-temperature");
+  const updated = document.getElementById("camera-last-update");
+  if (!connection || !state || !temperature || !updated) return;
+
+  function setConnection(online) {
+    connectionText.textContent = online ? "ONLINE" : "OFFLINE";
+    connection.classList.toggle("offline", !online);
+    connectionDot.classList.toggle("offline-dot", !online);
+  }
+
+  async function pollCamera() {
+    try {
+      const response = await fetch("/api/sgp/camera", {cache: "no-store"});
+      if (!response.ok) throw new Error("SGP unavailable");
+      const data = await response.json();
+      if (data.success !== true || typeof data.state !== "string") throw new Error("Invalid camera telemetry");
+      setConnection(data.connected === true);
+      state.textContent = data.state;
+      temperature.textContent = typeof data.temperature_c === "number" ? data.temperature_c.toFixed(1) + " °C" : "—";
+      updated.textContent = "Last Update : " + data.timestamp_utc.slice(0, 19).replace("T", " ") + "Z";
+    } catch (_) {
+      setConnection(false);
+      state.textContent = "—";
+      temperature.textContent = "—";
+      updated.textContent = "Last Update : —";
+    }
+  }
+
+  async function startCameraPolling() {
+    let interval = 5000;
+    try {
+      const response = await fetch("/api/dashboard-config", {cache: "no-store"});
+      if (response.ok) {
+        const config = await response.json();
+        if (Number.isFinite(config.sgp_poll_freq_ms)) interval = Math.max(1000, config.sgp_poll_freq_ms);
+      }
+    } catch (_) {}
+    await pollCamera();
+    setInterval(pollCamera, interval);
+  }
+  startCameraPolling();
+})();
