@@ -160,8 +160,8 @@ main{padding-top:30px}
 @media(min-width:1251px){
   main:not(.details-main){flex:1 1 auto;min-height:0}
   main:not(.details-main) .tile-grid{
-    height:calc(100vh - 155px);
-    height:calc(100dvh - 155px);
+    height:calc(100vh - 115px);
+    height:calc(100dvh - 115px);
     min-height:0;
     grid-template-rows:repeat(3,minmax(0,1fr));
     align-content:stretch;
@@ -182,3 +182,7 @@ main{padding-top:30px}
   main:not(.details-main) .tile-grid .description{font-size:10px}
   main:not(.details-main)+.page-footer{margin-top:6px;padding:5px 0 7px}
 }
+
+/* Homepage breadcrumb occupies the header's right side; no separate heading row. */
+.overview-breadcrumb{margin-left:auto;color:var(--subtle);font-size:11px;font-weight:700;letter-spacing:.15em;white-space:nowrap}
+@media(max-width:520px){.overview-breadcrumb{font-size:9px;letter-spacing:.08em}}
