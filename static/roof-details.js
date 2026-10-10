@@ -1,21 +1,6 @@
-// Read-only RoofRunner details. Polls independently of the dashboard.
+// RoofRunner-specific fields and formatting. Shared page lifecycle lives in details.js.
 (function () {
   "use strict";
-  const $ = (id) => document.getElementById(id);
-  function updateClock() {
-    $("clock").textContent = new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC";
-  }
-  updateClock();
-  setInterval(updateClock, 1000);
-
-  function put(id, value) {
-    $(id).textContent = value === null || value === undefined ? "—" : String(value);
-  }
-  function connection(online) {
-    put("roof-connection-text", online ? "ONLINE" : "OFFLINE");
-    $("roof-connection").classList.toggle("offline", !online);
-    $("roof-connection-dot").classList.toggle("offline-dot", !online);
-  }
   function position(t, controller) {
     if (controller && controller.state === "HALTED") return "HALTED";
     if (t.open_limit_active && !t.closed_limit_active) return "OPEN";
@@ -42,12 +27,11 @@
   function fixed(value, divisor, digits, unit) {
     return Number.isFinite(value) ? (value / divisor).toFixed(digits) + " " + unit : "—";
   }
-  async function poll() {
-    try {
-      const response = await fetch("/api/roofrunner/telemetry", {cache: "no-store"});
-      if (!response.ok) throw new Error("Unavailable");
-      const data = await response.json();
-      if (data.success !== true || !data.telemetry || !data.timestamp_utc) throw new Error("Invalid telemetry");
+  window.TSOLiveDetailsAdapter = {
+    endpoint: "/api/roofrunner/telemetry",
+    configKey: "roofrunner_poll_freq_ms",
+    valid: (data) => !!data.telemetry,
+    render(data, put) {
       const t = data.telemetry;
       const c = data.controller || {};
       put("roof-position", position(t, c));
@@ -65,22 +49,6 @@
       put("input-voltage", fixed(t.input_voltage_mv, 1000, 3, "V"));
       put("temperature", fixed(t.temperature_tenths_c, 10, 1, "°C"));
       put("uptime", uptime(t.uptime_ms));
-      connection(true);
-    } catch (_) {
-      connection(false);
     }
-  }
-  async function start() {
-    let interval = 5000;
-    try {
-      const response = await fetch("/api/dashboard-config", {cache: "no-store"});
-      if (response.ok) {
-        const config = await response.json();
-        if (Number.isFinite(config.roofrunner_poll_freq_ms)) interval = Math.max(1000, config.roofrunner_poll_freq_ms);
-      }
-    } catch (_) {}
-    await poll();
-    setInterval(poll, interval);
-  }
-  start();
+  };
 })();
