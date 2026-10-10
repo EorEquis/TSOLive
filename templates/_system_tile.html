@@ -1,0 +1,34 @@
+{# One shared tile shell; each system supplies only its body content and metadata. #}
+{% macro render_tile(tile) %}
+<article class="tile{% if tile.placeholder %} placeholder-tile{% endif %}" {% if not tile.placeholder %}tabindex="0"{% endif %} aria-label="{{ tile.aria_label }}">
+  <div class="tile-head">
+    <div class="tile-title">
+      <span class="tile-icon" aria-hidden="true">{{ tile.icon }}</span>
+      <div class="tile-name">
+        <h3>{{ tile.name }}</h3>
+        <div class="tile-update"{% if tile.id == "roof" %} id="roof-last-update"{% endif %}>Last Update : {{ tile.last_update }}</div>
+      </div>
+    </div>
+    {% if tile.live %}
+    <span class="device-tag offline" id="roof-connection"><span class="status-dot offline-dot" id="roof-connection-dot"></span><span id="roof-connection-text">OFFLINE</span></span>
+    {% elif tile.placeholder %}
+    <span class="device-tag pending-tag">PLANNED</span>
+    {% else %}
+    <span class="device-tag"><span class="status-dot"></span>ONLINE</span>
+    {% endif %}
+  </div>
+  <div class="tile-body">
+    {% include tile.body_template %}
+  </div>
+  <div class="tile-foot">
+    <span>{% if tile.source %}Source : {{ tile.source }}{% else %}Not configured{% endif %}</span>
+    {% if tile.details_enabled %}
+    <a class="foot-right details-link" href="/details?system={{ tile.id }}">DETAILS <span aria-hidden="true">↗</span></a>
+    {% elif tile.placeholder %}
+    <span class="foot-right">PLACEHOLDER</span>
+    {% else %}
+    <span class="foot-right">DETAILS <span aria-hidden="true">↗</span></span>
+    {% endif %}
+  </div>
+</article>
+{% endmacro %}
