@@ -6,7 +6,7 @@
       <span class="tile-icon" aria-hidden="true">{{ tile.icon }}</span>
       <div class="tile-name">
         <h3>{{ tile.name }}</h3>
-        <div class="tile-update"{% if tile.id in ("roof", "camera") %} id="roof-last-update"{% endif %}>Last Update : {{ tile.last_update }}</div>
+        <div class="tile-update"{% if tile.id in ("roof", "camera") %} id="{{ tile.id }}-last-update"{% endif %}>Last Update : {{ tile.last_update }}</div>
       </div>
     </div>
     {% if tile.live %}
