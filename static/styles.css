@@ -186,3 +186,11 @@ main{padding-top:30px}
 /* Homepage breadcrumb occupies the header's right side; no separate heading row. */
 .overview-breadcrumb{margin-left:90px;margin-right:auto;color:var(--subtle);font-size:11px;font-weight:700;letter-spacing:.15em;white-space:nowrap}
 @media(max-width:520px){.overview-breadcrumb{font-size:9px;letter-spacing:.08em}}
+
+/* Shared details header: breadcrumb beside branding, connectivity at far right. */
+.details-breadcrumb{margin-left:90px;margin-right:auto}
+.details-header-connection{margin-left:auto;flex-shrink:0}
+@media(max-width:700px){
+  .details-breadcrumb{margin-left:12px;white-space:normal}
+  .details-header-connection{font-size:9px}
+}
