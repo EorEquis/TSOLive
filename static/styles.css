@@ -154,3 +154,31 @@ main{padding-top:30px}
   main:not(.details-main) .tile-grid .sensor{margin-top:8px}
   main:not(.details-main) .tile-grid .tile{min-height:0}
 }
+
+/* Forced-fit desktop experiment: three equal rows inside the viewport.
+   Homepage only; details pages and smaller breakpoints are unaffected. */
+@media(min-width:1251px){
+  main:not(.details-main){flex:1 1 auto;min-height:0}
+  main:not(.details-main) .tile-grid{
+    height:calc(100vh - 190px);
+    height:calc(100dvh - 190px);
+    min-height:0;
+    grid-template-rows:repeat(3,minmax(0,1fr));
+    align-content:stretch;
+    gap:8px;
+  }
+  main:not(.details-main) .tile-grid .tile{min-height:0}
+  main:not(.details-main) .tile-grid .tile-head{padding:6px 10px;flex-shrink:0}
+  main:not(.details-main) .tile-grid .tile-body{padding:6px 10px;min-height:0;overflow:hidden}
+  main:not(.details-main) .tile-grid .tile-foot{padding:5px 10px;flex-shrink:0}
+  main:not(.details-main) .tile-grid .big-status{font-size:17px;line-height:1.1;margin-bottom:3px}
+  main:not(.details-main) .tile-grid .readouts{margin-top:5px;gap:5px}
+  main:not(.details-main) .tile-grid .readouts div{gap:4px}
+  main:not(.details-main) .tile-grid .exposure,
+  main:not(.details-main) .tile-grid .sensor{margin-top:5px}
+  main:not(.details-main) .tile-grid .progress-track{margin-top:5px;height:6px}
+  main:not(.details-main) .tile-grid .metric-label{margin-bottom:3px}
+  main:not(.details-main) .tile-grid .tile-update{font-size:8px}
+  main:not(.details-main) .tile-grid .description{font-size:10px}
+  main:not(.details-main)+.page-footer{margin-top:6px;padding:5px 0 7px}
+}
