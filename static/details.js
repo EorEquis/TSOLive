@@ -15,9 +15,9 @@
   clock();
   setInterval(clock, 1000);
   function connection(online) {
-    put("roof-connection-text", online ? "ONLINE" : "OFFLINE");
-    $("roof-connection").classList.toggle("offline", !online);
-    $("roof-connection-dot").classList.toggle("offline-dot", !online);
+    put("details-connection-text", online ? "ONLINE" : "OFFLINE");
+    $("details-connection").classList.toggle("offline", !online);
+    $("details-connection-dot").classList.toggle("offline-dot", !online);
   }
   async function poll() {
     try {
@@ -26,7 +26,7 @@
       const data = await response.json();
       if (data.success !== true || !data.timestamp_utc || !adapter.valid(data)) throw new Error("Invalid telemetry");
       adapter.render(data, put);
-      put("roof-last-update", data.timestamp_utc.slice(0, 19).replace("T", " ") + "Z");
+      put("details-last-update", data.timestamp_utc.slice(0, 19).replace("T", " ") + "Z");
       connection(true);
     } catch (_) {
       connection(false); // Retain last confirmed values and timestamp.
