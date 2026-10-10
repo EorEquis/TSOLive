@@ -61,3 +61,10 @@ async def roofrunner_telemetry():
         return await asyncio.to_thread(_read_roofrunner)
     except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
         return JSONResponse(status_code=503, content={"success": False})
+
+
+@app.get("/details", response_class=HTMLResponse)
+async def details(system: str = ""):
+    if system != "roof":
+        return HTMLResponse("Unknown system", status_code=404)
+    return (BASE_DIR / "templates" / "roof-details.html").read_text(encoding="utf-8")
