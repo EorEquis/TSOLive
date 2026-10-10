@@ -38,8 +38,8 @@ OVERVIEW_SYSTEMS = [
      "last_update": "—", "live": True, "details_enabled": True,
      "aria_label": "Roof system", "body_template": "tiles/roof.html"},
     {"id": "telescope", "name": "Telescope", "icon": "◎", "source": "Sequence Generator Pro",
-     "last_update": "2026-10-10 00:39:55Z", "live": False, "details_enabled": False,
-     "aria_label": "Telescope system details, coming soon", "body_template": "tiles/telescope.html"},
+     "last_update": "—", "live": False, "connection_live": True, "details_enabled": False,
+     "aria_label": "Telescope system", "body_template": "tiles/telescope.html"},
     {"id": "camera", "name": "Camera", "icon": "▣", "source": "Sequence Generator Pro",
      "last_update": "—", "live": False, "connection_live": True, "details_enabled": True,
      "aria_label": "Camera system", "body_template": "tiles/camera.html"},
@@ -185,3 +185,43 @@ async def details(request: Request, system: str = ""):
         name=config["template"],
         context={"system_label": config["label"], "source_name": config["source"]},
     )
+
+def _read_sgp_telescope():
+    base = os.getenv("SGP_API_URL", "").rstrip("/")
+    if not base:
+        raise ValueError("SGP_API_URL is not configured")
+
+    def get(operation):
+        request = URLRequest(base + "/json/reply/" + operation, method="GET")
+        with urlopen(request, timeout=3) as response:
+            data = json.load(response)
+        if not isinstance(data, dict) or data.get("Success") is not True:
+            raise ValueError("SGP returned unsuccessful telescope telemetry")
+        return data
+
+    status = get("SgGetDeviceStatus?Device=Telescope")
+    state = status.get("State")
+    if not isinstance(state, str):
+        raise ValueError("SGP telescope state is missing")
+    connected = state != "DISCONNECTED"
+    ra = dec = slewing = None
+    if connected:
+        position = get("SgGetTelescopePosition")
+        ra, dec = position.get("Ra"), position.get("Dec")
+        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (ra, dec)):
+            raise ValueError("SGP telescope coordinates are invalid")
+        slew = get("SgGetTelescopeIsSlewing")
+        slewing = slew.get("IsSlewing")
+        if not isinstance(slewing, bool):
+            raise ValueError("SGP telescope slew status is invalid")
+    return {"success": True, "state": state, "connected": connected,
+            "ra_hours": ra, "dec_degrees": dec, "is_slewing": slewing,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/api/sgp/telescope")
+async def sgp_telescope():
+    try:
+        return await asyncio.to_thread(_read_sgp_telescope)
+    except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+        return JSONResponse(status_code=503, content={"success": False})
