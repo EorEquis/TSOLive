@@ -87,7 +87,7 @@
       const data = await response.json();
       if (data.success !== true || typeof data.state !== "string") throw new Error("Invalid camera telemetry");
       setConnection(data.connected === true);
-      state.textContent = data.state;
+      state.textContent = data.state === "READY" ? "IDLE" : data.state;
       temperature.textContent = typeof data.temperature_c === "number" ? data.temperature_c.toFixed(1) + " °C" : "—";
       updated.textContent = "Last Update : " + data.timestamp_utc.slice(0, 19).replace("T", " ") + "Z";
     } catch (_) {
