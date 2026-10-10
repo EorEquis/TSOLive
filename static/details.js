@@ -27,7 +27,7 @@
       if (data.success !== true || !data.timestamp_utc || !adapter.valid(data)) throw new Error("Invalid telemetry");
       adapter.render(data, put);
       put("details-last-update", data.timestamp_utc.slice(0, 19).replace("T", " ") + "Z");
-      connection(true);
+      connection(typeof adapter.online === "function" ? adapter.online(data) : true);
     } catch (_) {
       connection(false); // Retain last confirmed values and timestamp.
     }
