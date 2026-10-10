@@ -27,6 +27,7 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 # Detail views share a common layout; each system supplies its own panels and telemetry adapter.
 DETAIL_SYSTEMS = {
     "roof": {"template": "roof-details.html", "label": "Roof", "source": "RoofRunner"},
+    "camera": {"template": "camera-details.html", "label": "Camera", "source": "Sequence Generator Pro"},
 }
 
 
@@ -40,8 +41,8 @@ OVERVIEW_SYSTEMS = [
      "last_update": "2026-10-10 00:39:55Z", "live": False, "details_enabled": False,
      "aria_label": "Telescope system details, coming soon", "body_template": "tiles/telescope.html"},
     {"id": "camera", "name": "Camera", "icon": "▣", "source": "Sequence Generator Pro",
-     "last_update": "—", "live": False, "connection_live": True, "details_enabled": False,
-     "aria_label": "Camera system details, coming soon", "body_template": "tiles/camera.html"},
+     "last_update": "—", "live": False, "connection_live": True, "details_enabled": True,
+     "aria_label": "Camera system", "body_template": "tiles/camera.html"},
     {"id": "filter-wheel", "name": "Filter Wheel", "icon": "◉", "source": None,
      "last_update": "—", "live": False, "details_enabled": False,
      "placeholder": True, "aria_label": "Filter Wheel integration planned",
@@ -154,7 +155,15 @@ def _read_sgp_camera():
                 temperature = value
         except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
             pass
+    props = {}
+    if state != "DISCONNECTED":
+        try:
+            props_data = get("SgGetCameraProps")
+            props = {key: props_data.get(key) for key in ("NumPixelsX", "NumPixelsY", "SupportsSubframe", "GainValues", "IsoValues")}
+        except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+            pass
     return {"success": True, "state": state, "connected": state != "DISCONNECTED",
+            "properties": props,
             "temperature_c": temperature, "timestamp_utc": datetime.now(timezone.utc).isoformat()}
 
 
