@@ -112,3 +112,58 @@
   }
   startCameraPolling();
 })();
+
+// Live SGP telescope overview.
+
+(function () {
+  "use strict";
+  const el = (id) => document.getElementById(id);
+  const state = el("telescope-state"), ra = el("telescope-ra"), dec = el("telescope-dec");
+  const updated = el("telescope-last-update"), tag = el("telescope-connection");
+  if (!state || !ra || !dec || !updated || !tag) return;
+  function sexagesimal(value, raMode) {
+    if (!Number.isFinite(value)) return "—";
+    const sign = raMode ? "" : (value < 0 ? "−" : "+");
+    const seconds = Math.round(Math.abs(value) * 360000) / 100;
+    const major = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainder = (seconds - major * 3600 - minutes * 60).toFixed(2).padStart(5, "0");
+    return sign + String(major).padStart(2, "0") + (raMode ? "h " : "° ") +
+      String(minutes).padStart(2, "0") + (raMode ? "m " : "′ ") + remainder + (raMode ? "s" : "″");
+  }
+  function connected(value) {
+    el("telescope-connection-text").textContent = value ? "ONLINE" : "OFFLINE";
+    tag.classList.toggle("offline", !value);
+    el("telescope-connection-dot").classList.toggle("offline-dot", !value);
+  }
+  async function poll() {
+    try {
+      const response = await fetch("/api/sgp/telescope", {cache: "no-store"});
+      if (!response.ok) throw Error("Unavailable");
+      const data = await response.json();
+      if (data.success !== true || typeof data.state !== "string" || !data.timestamp_utc) throw Error("Invalid");
+      connected(data.connected === true);
+      state.textContent = data.connected && data.is_slewing === true ? "SLEWING" : data.state;
+      ra.textContent = sexagesimal(data.ra_hours, true);
+      dec.textContent = sexagesimal(data.dec_degrees, false);
+      updated.textContent = "Last Update : " + data.timestamp_utc.slice(0, 19).replace("T", " ") + "Z";
+    } catch (_) {
+      connected(false);
+      state.textContent = ra.textContent = dec.textContent = "—";
+      updated.textContent = "Last Update : —";
+    }
+  }
+  async function start() {
+    let interval = 5000;
+    try {
+      const response = await fetch("/api/dashboard-config", {cache: "no-store"});
+      if (response.ok) {
+        const config = await response.json();
+        if (Number.isFinite(config.sgp_poll_freq_ms)) interval = Math.max(1000, config.sgp_poll_freq_ms);
+      }
+    } catch (_) {}
+    await poll();
+    setInterval(poll, interval);
+  }
+  start();
+})();
