@@ -11,7 +11,7 @@ import json
 import os
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request as URLRequest, urlopen
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -52,7 +52,7 @@ def _read_roofrunner():
     base = os.getenv("ROOFRUNNER_API_URL", "").rstrip("/")
     if not base:
         raise ValueError("ROOFRUNNER_API_URL is not configured")
-    request = Request(base + "/api/dome/telemetry", method="GET")
+    request = URLRequest(base + "/api/dome/telemetry", method="GET")
     with urlopen(request, timeout=3) as response:
         payload = json.load(response)
     if not isinstance(payload, dict) or payload.get("success") is not True:
