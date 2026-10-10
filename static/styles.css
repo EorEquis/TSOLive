@@ -99,3 +99,7 @@ main{padding-top:30px}
   .details-values dd{font-size:12px}
   .details-main+.page-footer{margin-top:14px;padding:10px 0 12px}
 }
+
+/* Shared details breadcrumb navigation. */
+.details-breadcrumb-home{color:inherit;text-decoration:none}
+.details-breadcrumb-home:hover,.details-breadcrumb-home:focus-visible{color:var(--cyan);text-decoration:underline}
