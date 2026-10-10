@@ -58,3 +58,28 @@ main{padding-top:30px}
 /* RoofRunner connectivity state. */
 .device-tag.offline{color:#e5a1a1}
 .status-dot.offline-dot{background:#e5a1a1;box-shadow:none}
+
+/* RoofRunner details: same palette and typography as the overview. */
+.details-home,.details-link{color:var(--cyan);text-decoration:none}
+.details-home{font-size:11px;font-weight:750;letter-spacing:.13em;border:1px solid var(--line);border-radius:7px;padding:11px 15px}
+.details-home:hover,.details-link:hover{color:var(--text);border-color:var(--cyan)}
+.details-main{padding-top:30px}
+.details-heading{align-items:center}
+.details-heading h2{font-size:24px}
+.details-subtitle{color:var(--muted);font-weight:400}
+.details-connection{font-size:11px}
+.details-hero{display:flex;justify-content:space-between;align-items:center;gap:25px;background:linear-gradient(145deg,#1a3048,var(--panel));border:1px solid #294059;border-radius:11px;padding:27px 30px;margin-bottom:18px}
+.details-position{font-size:46px;font-weight:750;color:var(--green);margin:9px 0 0;letter-spacing:.015em}
+.details-hero-meta{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
+.details-hero-meta strong{font-size:16px;font-variant-numeric:tabular-nums;font-weight:650}
+.details-source{font-size:11px;color:var(--subtle)}
+.details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.details-panel{min-width:0;background:linear-gradient(155deg,#17283f,var(--panel) 68%);border:1px solid #294059;border-radius:11px;padding:22px 25px}
+.details-panel h3{font-size:16px;padding-bottom:17px;border-bottom:1px solid var(--line)}
+.details-values{margin:0}
+.details-values>div{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:13px 0;border-bottom:1px solid var(--line)}
+.details-values>div:last-child{border-bottom:0;padding-bottom:0}
+.details-values dt{color:var(--muted);font-size:12px}
+.details-values dd{margin:0;font-size:13px;font-weight:650;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
+.details-note{font-size:11px;color:var(--subtle);margin:18px 0 0}
+@media(max-width:700px){.details-grid{grid-template-columns:1fr}.details-hero{padding:22px;align-items:flex-start;flex-direction:column}.details-hero-meta{align-items:flex-start}.details-position{font-size:36px}.details-heading h2{font-size:21px}.details-home{padding:9px 10px}.details-panel{padding:18px}}
