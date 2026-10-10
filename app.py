@@ -39,7 +39,7 @@ OVERVIEW_SYSTEMS = [
      "last_update": "2026-10-10 00:39:55Z", "live": False, "details_enabled": False,
      "aria_label": "Telescope system details, coming soon", "body_template": "tiles/telescope.html"},
     {"id": "camera", "name": "Camera", "icon": "▣", "source": "Sequence Generator Pro",
-     "last_update": "2026-10-10 00:39:57Z", "live": False, "details_enabled": False,
+     "last_update": "—", "live": False, "connection_live": True, "details_enabled": False,
      "aria_label": "Camera system details, coming soon", "body_template": "tiles/camera.html"},
     {"id": "filter-wheel", "name": "Filter Wheel", "icon": "◉", "source": None,
      "last_update": "—", "live": False, "details_enabled": False,
@@ -98,7 +98,11 @@ async def dashboard_config():
         interval = int(os.getenv("ROOFRUNNER_POLL_FREQ_MS", "5000"))
     except ValueError:
         interval = 5000
-    return {"roofrunner_poll_freq_ms": max(1000, interval)}
+    try:
+        sgp_interval = int(os.getenv("SGP_POLL_FREQ_MS", "5000"))
+    except ValueError:
+        sgp_interval = 5000
+    return {"roofrunner_poll_freq_ms": max(1000, interval), "sgp_poll_freq_ms": max(1000, sgp_interval)}
 
 
 def _read_roofrunner():
@@ -119,6 +123,42 @@ def _read_roofrunner():
 async def roofrunner_telemetry():
     try:
         return await asyncio.to_thread(_read_roofrunner)
+    except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+        return JSONResponse(status_code=503, content={"success": False})
+
+
+def _read_sgp_camera():
+    base = os.getenv("SGP_API_URL", "http://192.168.10.100:59590").rstrip("/")
+
+    def get(operation):
+        request = URLRequest(base + "/json/reply/" + operation, method="GET")
+        with urlopen(request, timeout=3) as response:
+            data = json.load(response)
+        if not isinstance(data, dict) or data.get("Success") is not True:
+            raise ValueError("SGP returned unsuccessful telemetry")
+        return data
+
+    status = get("SgGetDeviceStatus?Device=Camera")
+    state = status.get("State")
+    if not isinstance(state, str):
+        raise ValueError("SGP camera state is missing")
+    temperature = None
+    if state != "DISCONNECTED":
+        try:
+            temp_data = get("SgGetCameraTemp")
+            value = temp_data.get("Temperature")
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                temperature = value
+        except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+            pass
+    return {"success": True, "state": state, "connected": state != "DISCONNECTED",
+            "temperature_c": temperature, "timestamp_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}
+
+
+@app.get("/api/sgp/camera")
+async def sgp_camera():
+    try:
+        return await asyncio.to_thread(_read_sgp_camera)
     except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
         return JSONResponse(status_code=503, content={"success": False})
 
