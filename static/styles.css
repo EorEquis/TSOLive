@@ -54,3 +54,7 @@ main{padding-top:30px}
 /* Static sample update timestamps beneath tile names. */
 .tile-name{display:flex;flex-direction:column;gap:5px;min-width:0}
 .tile-update{font-size:9px;font-weight:500;letter-spacing:.015em;color:var(--subtle);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* RoofRunner connectivity state. */
+.device-tag.offline{color:#e5a1a1}
+.status-dot.offline-dot{background:#e5a1a1;box-shadow:none}
