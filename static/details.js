@@ -24,9 +24,10 @@
       const response = await fetch(adapter.endpoint, {cache: "no-store"});
       if (!response.ok) throw new Error("Telemetry unavailable");
       const data = await response.json();
-      if (data.success !== true || !data.timestamp_utc || !adapter.valid(data)) throw new Error("Invalid telemetry");
+      const timestamp = adapter.timestamp ? adapter.timestamp(data) : data.timestamp_utc;
+      if (!timestamp || !adapter.valid(data)) throw new Error("Invalid telemetry");
       adapter.render(data, put);
-      put("details-last-update", data.timestamp_utc.slice(0, 19).replace("T", " ") + "Z");
+      put("details-last-update", timestamp.slice(0, 19).replace("T", " ") + "Z");
       connection(true);
     } catch (_) {
       connection(false); // Retain last confirmed values and timestamp.
