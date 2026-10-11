@@ -45,10 +45,9 @@ OVERVIEW_SYSTEMS = [
      "last_update": "—", "live": False, "details_enabled": False,
      "placeholder": True, "aria_label": "Filter Wheel integration planned",
      "body_template": "tiles/placeholder.html"},
-    {"id": "weather", "name": "Weather", "icon": "☁", "source": None,
-     "last_update": "—", "live": False, "details_enabled": False,
-     "placeholder": True, "aria_label": "Weather integration planned",
-     "body_template": "tiles/placeholder.html"},
+    {"id": "weather", "name": "Weather", "icon": "☁", "source": "Weather Station V2",
+     "last_update": "—", "live": True, "details_enabled": False,
+     "aria_label": "Weather station telemetry", "body_template": "tiles/weather.html"},
     {"id": "allsky", "name": "AllSky", "icon": "✦", "source": None,
      "last_update": "—", "live": False, "details_enabled": False,
      "placeholder": True, "aria_label": "AllSky integration planned",
@@ -98,7 +97,12 @@ async def dashboard_config():
         interval = int(os.getenv("ROOFRUNNER_POLL_FREQ_MS", "5000"))
     except ValueError:
         interval = 5000
-    return {"roofrunner_poll_freq_ms": max(1000, interval)}
+    try:
+        weather_interval = int(os.getenv("WEATHER_POLL_FREQ", "5000"))
+    except ValueError:
+        weather_interval = 5000
+    return {"roofrunner_poll_freq_ms": max(1000, interval),
+            "weather_poll_freq_ms": max(1000, weather_interval)}
 
 
 def _read_roofrunner():
@@ -133,3 +137,24 @@ async def details(request: Request, system: str = ""):
         name=config["template"],
         context={"system_label": config["label"], "source_name": config["source"]},
     )
+
+
+def _read_weather():
+    url = os.getenv("WEATHER_API_URL", "").strip()
+    if not url:
+        raise ValueError("WEATHER_API_URL is not configured")
+    with urlopen(URLRequest(url, method="GET"), timeout=3) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict) or not isinstance(payload.get("status"), dict):
+        raise ValueError("Invalid weather station response")
+    if payload["status"].get("system") != "available" or not payload.get("timestamp"):
+        raise ValueError("Weather station unavailable")
+    return payload
+
+
+@app.get("/api/weather/telemetry")
+async def weather_telemetry():
+    try:
+        return await asyncio.to_thread(_read_weather)
+    except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+        return JSONResponse(status_code=503, content={"success": False})
