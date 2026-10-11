@@ -62,3 +62,51 @@
   }
   startRoofPolling();
 })();
+
+// Weather Station V2: independent, read-only polling.
+(function () {
+  "use strict";
+  const el = (id) => document.getElementById(id);
+  const tag = el("weather-connection");
+  if (!tag) return;
+  function setConnection(online) {
+    el("weather-connection-text").textContent = online ? "ONLINE" : "OFFLINE";
+    tag.classList.toggle("offline", !online);
+    el("weather-connection-dot").classList.toggle("offline-dot", !online);
+  }
+  function show(id, value) {
+    el(id).textContent = typeof value === "number" && Number.isFinite(value)
+      ? value.toFixed(1) + " °C" : "—";
+  }
+  async function poll() {
+    try {
+      const response = await fetch("/api/weather/telemetry", {cache: "no-store"});
+      if (!response.ok) throw new Error("Weather unavailable");
+      const data = await response.json();
+      if (!data.status || data.status.system !== "available" || !data.timestamp) throw new Error("Invalid weather telemetry");
+      setConnection(true);
+      const bme = data.status.bme280 === "available";
+      show("weather-temp", bme ? data.temperature_c : null);
+      el("weather-humidity").textContent = bme && typeof data.humidity_pct === "number" && Number.isFinite(data.humidity_pct)
+        ? data.humidity_pct.toFixed(1) + " %" : "—";
+      show("weather-dewpoint", bme ? data.dew_point_c : null);
+      el("weather-last-update").textContent = "Last Update : " + data.timestamp.slice(0, 19).replace("T", " ") + "Z";
+    } catch (_) {
+      setConnection(false);
+      // Preserve last confirmed readings and source timestamp on connection loss.
+    }
+  }
+  async function start() {
+    let interval = 5000;
+    try {
+      const response = await fetch("/api/dashboard-config", {cache: "no-store"});
+      if (response.ok) {
+        const config = await response.json();
+        if (Number.isFinite(config.weather_poll_freq_ms)) interval = Math.max(1000, config.weather_poll_freq_ms);
+      }
+    } catch (_) {}
+    await poll();
+    setInterval(poll, interval);
+  }
+  start();
+})();
