@@ -198,3 +198,8 @@ main{padding-top:30px}
 /* Distinguish sample telemetry from actual connected hardware. */
 .device-tag.simulated-tag{color:#e1c98b}
 .status-dot.simulated-dot{background:#e1c98b;box-shadow:0 0 10px #e1c98b4d}
+
+/* Weather sensor health: distinguish disabled sensors from failed reads. */
+.sensor-available{color:var(--green)}
+.sensor-unavailable{color:var(--subtle)}
+.sensor-error{color:#e5a1a1}
