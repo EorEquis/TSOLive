@@ -203,3 +203,15 @@ main{padding-top:30px}
 .sensor-available{color:var(--green)}
 .sensor-unavailable{color:var(--subtle)}
 .sensor-error{color:#e5a1a1}
+
+/* Weather details: sensor statuses form one compact full-width bottom panel. */
+.details-grid > .weather-sensor-panel{grid-column:1/-1}
+.weather-sensor-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));column-gap:24px;row-gap:0}
+.weather-sensor-grid > div{min-width:0}
+@media(min-width:701px){
+  .weather-sensor-panel{padding-top:10px;padding-bottom:12px}
+  .weather-sensor-panel h3{padding-bottom:7px}
+  .weather-sensor-grid > div{padding:6px 0}
+}
+@media(max-width:1000px){.weather-sensor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.weather-sensor-grid{grid-template-columns:1fr}}
