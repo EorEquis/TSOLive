@@ -26,6 +26,7 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 # Detail views share a common layout; each system supplies its own panels and telemetry adapter.
 DETAIL_SYSTEMS = {
     "roof": {"template": "roof-details.html", "label": "Roof", "source": "RoofRunner"},
+    "weather": {"template": "weather-details.html", "label": "Weather", "source": "Weather Station V2"},
 }
 
 
@@ -46,7 +47,7 @@ OVERVIEW_SYSTEMS = [
      "placeholder": True, "aria_label": "Filter Wheel integration planned",
      "body_template": "tiles/placeholder.html"},
     {"id": "weather", "name": "Weather", "icon": "☁", "source": "Weather Station V2",
-     "last_update": "—", "live": True, "details_enabled": False,
+     "last_update": "—", "live": True, "details_enabled": True,
      "aria_label": "Weather station telemetry", "body_template": "tiles/weather.html"},
     {"id": "allsky", "name": "AllSky", "icon": "✦", "source": None,
      "last_update": "—", "live": False, "details_enabled": False,
