@@ -1,0 +1,52 @@
+{% extends "details-base.html" %}
+{% block title %}Weather Details{% endblock %}
+{% block system_scripts %}<script src="/static/weather-details.js" defer></script>{% endblock %}
+{% block primary_label %}AMBIENT TEMPERATURE{% endblock %}
+{% block panels %}
+<section class="details-panel">
+  <h3>Atmosphere</h3>
+  <dl class="details-values">
+    <div><dt>Ambient temperature</dt><dd id="weather-temperature">—</dd></div>
+    <div><dt>Relative humidity</dt><dd id="weather-humidity">—</dd></div>
+    <div><dt>Dew point</dt><dd id="weather-dewpoint">—</dd></div>
+    <div><dt>Barometric pressure</dt><dd id="weather-pressure">—</dd></div>
+  </dl>
+</section>
+<section class="details-panel">
+  <h3>Sky & Light</h3>
+  <dl class="details-values">
+    <div><dt>Sky temperature</dt><dd id="weather-sky-temperature">—</dd></div>
+    <div><dt>Ground temperature</dt><dd id="weather-ground-temperature">—</dd></div>
+    <div><dt>Dark</dt><dd id="weather-is-dark">—</dd></div>
+    <div><dt>Light sensor value</dt><dd id="weather-light-value">—</dd></div>
+  </dl>
+</section>
+<section class="details-panel">
+  <h3>Precipitation</h3>
+  <dl class="details-values">
+    <div><dt>Wet sensor</dt><dd id="weather-is-wet">—</dd></div>
+    <div><dt>Wet sensor value</dt><dd id="weather-wet-value">—</dd></div>
+    <div><dt>Rain accumulation</dt><dd id="weather-rain-amount">—</dd></div>
+  </dl>
+</section>
+<section class="details-panel">
+  <h3>Wind</h3>
+  <dl class="details-values">
+    <div><dt>Wind speed</dt><dd id="weather-wind-speed">—</dd></div>
+    <div><dt>Wind direction</dt><dd id="weather-wind-direction">—</dd></div>
+  </dl>
+</section>
+<section class="details-panel">
+  <h3>Sensor Availability</h3>
+  <dl class="details-values">
+    <div><dt>BME280</dt><dd id="weather-status-bme280">—</dd></div>
+    <div><dt>LM393 light</dt><dd id="weather-status-lm393_light">—</dd></div>
+    <div><dt>LM393 rain</dt><dd id="weather-status-lm393_rain">—</dd></div>
+    <div><dt>MLX90614 #1</dt><dd id="weather-status-mlx90614_1">—</dd></div>
+    <div><dt>MLX90614 #2</dt><dd id="weather-status-mlx90614_2">—</dd></div>
+    <div><dt>Anemometer</dt><dd id="weather-status-anemometer">—</dd></div>
+    <div><dt>Wind vane</dt><dd id="weather-status-windvane">—</dd></div>
+    <div><dt>Rain bucket</dt><dd id="weather-status-rainbucket">—</dd></div>
+  </dl>
+</section>
+{% endblock %}
