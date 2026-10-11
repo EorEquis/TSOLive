@@ -18,8 +18,9 @@
       set("temperature", valueFor("bme280", reading(data.temperature_c, "°C")));
       set("humidity", valueFor("bme280", reading(data.humidity_pct, "%")));
       set("dewpoint", valueFor("bme280", reading(data.dew_point_c, "°C")));
-      set("pressure", valueFor("bme280", reading(data.pressure_hpa, "hPa", 2)));
+      set("pressure", valueFor("bme280", reading(typeof data.pressure_hpa === "number" ? data.pressure_hpa * 0.0295299830714 : null, "inHg", 2)));
       put("details-primary", valueFor("bme280", reading(data.temperature_c, "°C")));
+      set("cloud-condition", "—");
       set("sky-temperature", valueFor("mlx90614_1", reading(data.sky_temperature_c, "°C")));
       set("ground-temperature", valueFor("mlx90614_2", reading(data.ground_temperature_c, "°C")));
       set("is-dark", valueFor("lm393_light", flag(data.is_dark)));
