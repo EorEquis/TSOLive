@@ -30,6 +30,29 @@
       if (!data.online) return;
       position.textContent = data.position;
       updated.textContent = "Last Update : " + data.timestamp.slice(0, 19).replace("T", " ") + "Z";
+    } else if (data.system === "allsky") {
+      const tag = document.getElementById("allsky-connection");
+      const dot = document.getElementById("allsky-connection-dot");
+      const label = document.getElementById("allsky-connection-text");
+      const online = data.online === true;
+      tag.classList.toggle("offline", !online);
+      dot.classList.toggle("offline-dot", !online);
+      label.textContent = online ? "ONLINE" : "OFFLINE";
+      if (data.timestamp) document.getElementById("allsky-last-update").textContent =
+        "Last Update : " + data.timestamp.slice(0, 19).replace("T", " ") + "Z";
+      const img = document.getElementById("allsky-current-image");
+      const unavailable = document.getElementById("allsky-image-unavailable");
+      if (data.image_version != null && img.dataset.version !== String(data.image_version)) {
+        const version = String(data.image_version);
+        const preload = new Image();
+        preload.onload = () => {
+          img.src = preload.src;
+          img.dataset.version = version;
+          img.hidden = false;
+          unavailable.hidden = true;
+        };
+        preload.src = "/allsky/current.jpg?v=" + encodeURIComponent(version);
+      }
     } else if (data.system === "weather") {
       const tag = document.getElementById("weather-connection");
       const dot = document.getElementById("weather-connection-dot");
@@ -47,6 +70,9 @@
   };
   events.onerror = () => {
     setConnection(false);
+    document.getElementById("allsky-connection").classList.add("offline");
+    document.getElementById("allsky-connection-dot").classList.add("offline-dot");
+    document.getElementById("allsky-connection-text").textContent = "OFFLINE";
     const tag = document.getElementById("weather-connection");
     tag.classList.add("offline");
     document.getElementById("weather-connection-dot").classList.add("offline-dot");
