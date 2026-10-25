@@ -432,6 +432,7 @@ async def events(request: Request):
         try:
             yield f"data: {json.dumps(request.app.state.roof_display)}\n\n"
             yield f"data: {json.dumps(request.app.state.weather_display)}\n\n"
+            yield f"data: {json.dumps(_allsky_status(request.app))}\n\n"
             while True:
                 try:
                     display = await asyncio.wait_for(queue.get(), timeout=20)
