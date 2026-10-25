@@ -25,7 +25,9 @@
     {% if tile.details_enabled %}
     <a class="foot-right details-link" href="/details?system={{ tile.id }}">DETAILS <span aria-hidden="true">↗</span></a>
     {% elif tile.placeholder %}
-    <span class="foot-right">PLACEHOLDER</span>\n    {% elif tile.id == "allsky" %}\n    <span class="foot-right">LIVE IMAGE</span>
+    <span class="foot-right">PLACEHOLDER</span>
+    {% elif tile.id == "allsky" %}
+    <span class="foot-right">LIVE IMAGE</span>
     {% else %}
     <span class="foot-right">DETAILS <span aria-hidden="true">↗</span></span>
     {% endif %}
