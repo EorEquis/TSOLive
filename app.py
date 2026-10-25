@@ -87,11 +87,6 @@ async def homepage(request: Request):
     )
 
 
-@app.get("/health")
-async def health():
-    return {"status": "ok", "service": "TSOLive"}
-
-
 @app.get("/api/dashboard-config")
 async def dashboard_config():
     try:
