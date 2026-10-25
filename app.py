@@ -11,9 +11,14 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import json
 import os
+import math
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as URLRequest, urlopen
+
+from astral import Observer
+from astral.sun import elevation
+import pymysql
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -91,6 +96,127 @@ def _roof_display(payload):
     }
 
 
+
+def _weather_interval():
+    try:
+        return max(1000, int(os.getenv("WEATHER_POLL_FREQ_MS", "5000"))) / 1000
+    except ValueError:
+        return 5.0
+
+
+def _number(value):
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) else None
+
+
+def _weather_value(value, fmt):
+    return format(value, fmt) if value is not None else "N/A"
+
+
+def _weather_daytime():
+    try:
+        observer = Observer(latitude=float(os.environ["OBSERVATORY_LAT"]),
+                            longitude=float(os.environ["OBSERVATORY_LON"]))
+        return "DAY" if elevation(observer, datetime.now(timezone.utc)) >= -12 else "NIGHT"
+    except (KeyError, ValueError, TypeError):
+        return "N/A"
+
+
+def _pressure_trend():
+    """Compare the first and last valid readings from the previous 30 UTC minutes."""
+    connection = pymysql.connect(
+        host=os.environ["WEATHER_DB_HOST"],
+        port=int(os.getenv("WEATHER_DB_PORT", "3306")),
+        user=os.environ["WEATHER_DB_USER"],
+        password=os.environ["WEATHER_DB_PASSWORD"],
+        database=os.environ["WEATHER_DB_NAME"],
+        connect_timeout=3, read_timeout=3, write_timeout=3,
+    )
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT pressure_sealevel_hpa FROM observations "
+                "WHERE obs_timestamp >= UTC_TIMESTAMP(6) - INTERVAL 30 MINUTE "
+                "AND obs_timestamp <= UTC_TIMESTAMP(6) "
+                "AND pressure_sealevel_hpa IS NOT NULL "
+                "ORDER BY obs_timestamp ASC"
+            )
+            values = [row[0] for row in cursor.fetchall()]
+        values = [v for v in values if _number(v) is not None]
+        if len(values) < 2:
+            return "N/A"
+        delta = values[-1] - values[0]
+        return "RISING" if delta > 0.2 else "FALLING" if delta < -0.2 else "STEADY"
+    finally:
+        connection.close()
+
+
+def _read_weather():
+    url = os.environ["WEATHER_API_URL"]
+    with urlopen(URLRequest(url, method="GET"), timeout=3) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict) or not payload.get("timestamp"):
+        raise ValueError("Invalid weather response")
+    return payload
+
+
+def _weather_display(payload, trend):
+    status = payload.get("status") or {}
+    def available(sensor):
+        return status.get("system") == "available" and status.get(sensor) == "available"
+
+    temp = _number(payload.get("temp_c")) if available("bme280") else None
+    sky = _number(payload.get("sky_temperature_c")) if available("mlx90614_1") else None
+    wind = _number(payload.get("wind_speed_mps")) if available("anemometer") else None
+    direction = _number(payload.get("wind_dir_deg")) if available("windvane") else None
+    pressure = _number(payload.get("pressure_sealevel_hpa")) if available("bme280") else None
+    rain = _number(payload.get("rain_rate_mm_hr")) if available("rainbucket") else None
+    wet = payload.get("is_wet") if available("lm393_rain") else None
+    compass = ("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+               "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
+    wind_text = "N/A"
+    if wind is not None:
+        wind_text = f"{wind * 2.2369362921:.1f} mph"
+        wind_text += " " + compass[int((direction % 360 + 11.25) // 22.5) % 16] if direction is not None else " N/A"
+    moisture = ("RAINING" if rain > 0 else "WET" if wet is True else "DRY" if wet is False else "N/A") if rain is not None else "N/A"
+    return {
+        "system": "weather", "online": True, "timestamp": payload["timestamp"],
+        "temperature": f"{temp:.1f}°C" if temp is not None else "N/A",
+        "wind": wind_text,
+        "sky": ("CLEAR" if temp - sky > 20 else "CLOUDY") if temp is not None and sky is not None else "N/A",
+        "moisture": moisture,
+        "time_of_day": _weather_daytime(),
+        "pressure": f"{pressure * 0.0295299831:.2f} inHg" if pressure is not None else "N/A",
+        "pressure_trend": trend,
+    }
+
+
+async def _poll_weather(app):
+    trend = "N/A"
+    next_trend = 0.0
+    loop = asyncio.get_running_loop()
+    while True:
+        if loop.time() >= next_trend:
+            try:
+                trend = await asyncio.to_thread(_pressure_trend)
+            except (OSError, ValueError, KeyError, TypeError, pymysql.MySQLError):
+                trend = "N/A"
+            next_trend = loop.time() + 60
+        try:
+            display = _weather_display(await asyncio.to_thread(_read_weather), trend)
+        except (OSError, ValueError, KeyError, TypeError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+            display = {"system": "weather", "online": False}
+        app.state.weather_display = display
+        _publish(app, display)
+        await asyncio.sleep(_weather_interval())
+
+
+def _publish(app, display):
+    for queue in tuple(app.state.subscribers):
+        if queue.full():
+            queue.get_nowait()
+        queue.put_nowait(display)
+
+
 async def _poll_roofrunner(app):
     while True:
         try:
@@ -98,26 +224,22 @@ async def _poll_roofrunner(app):
         except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError, KeyError, TypeError):
             display = {"system": "roof", "online": False}
         app.state.roof_display = display
-        for queue in tuple(app.state.subscribers):
-            if queue.full():
-                queue.get_nowait()
-            queue.put_nowait(display)
+        _publish(app, display)
         await asyncio.sleep(_poll_interval())
 
 
 @asynccontextmanager
 async def lifespan(app):
     app.state.roof_display = {"system": "roof", "online": False}
+    app.state.weather_display = {"system": "weather", "online": False}
     app.state.subscribers = set()
-    task = asyncio.create_task(_poll_roofrunner(app))
+    tasks = [asyncio.create_task(_poll_roofrunner(app)), asyncio.create_task(_poll_weather(app))]
     try:
         yield
     finally:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 app = FastAPI(title="TSOLive", description="Read-only observatory telemetry", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
@@ -145,10 +267,9 @@ OVERVIEW_SYSTEMS = [
      "last_update": "—", "live": False, "details_enabled": False,
      "placeholder": True, "aria_label": "Filter Wheel integration planned",
      "body_template": "tiles/placeholder.html"},
-    {"id": "weather", "name": "Weather", "icon": "☁", "source": None,
-     "last_update": "—", "live": False, "details_enabled": False,
-     "placeholder": True, "aria_label": "Weather integration planned",
-     "body_template": "tiles/placeholder.html"},
+    {"id": "weather", "name": "Weather", "icon": "☁", "source": "Weather Station",
+     "last_update": "—", "live": True, "details_enabled": False,
+     "aria_label": "Weather system", "body_template": "tiles/weather.html"},
     {"id": "allsky", "name": "AllSky", "icon": "✦", "source": None,
      "last_update": "—", "live": False, "details_enabled": False,
      "placeholder": True, "aria_label": "AllSky integration planned",
@@ -208,6 +329,7 @@ async def events(request: Request):
         request.app.state.subscribers.add(queue)
         try:
             yield f"data: {json.dumps(request.app.state.roof_display)}\n\n"
+            yield f"data: {json.dumps(request.app.state.weather_display)}\n\n"
             while True:
                 try:
                     display = await asyncio.wait_for(queue.get(), timeout=20)
