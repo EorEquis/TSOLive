@@ -32,17 +32,6 @@
       connection(false); // Retain last confirmed values and timestamp.
     }
   }
-  async function start() {
-    let interval = 5000;
-    try {
-      const response = await fetch("/api/dashboard-config", {cache: "no-store"});
-      if (response.ok) {
-        const config = await response.json();
-        if (Number.isFinite(config[adapter.configKey])) interval = Math.max(1000, config[adapter.configKey]);
-      }
-    } catch (_) {}
-    await poll();
-    setInterval(poll, interval);
-  }
-  start();
+  poll();
+  setInterval(poll, 1000);
 })();
