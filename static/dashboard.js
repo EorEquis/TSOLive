@@ -48,17 +48,6 @@
     }
   }
 
-  async function startRoofPolling() {
-    let interval = 5000;
-    try {
-      const response = await fetch("/api/dashboard-config", {cache: "no-store"});
-      if (response.ok) {
-        const config = await response.json();
-        if (Number.isFinite(config.roofrunner_poll_freq_ms)) interval = Math.max(1000, config.roofrunner_poll_freq_ms);
-      }
-    } catch (_) {}
-    await pollRoof();
-    setInterval(pollRoof, interval);
-  }
-  startRoofPolling();
+  pollRoof();
+  setInterval(pollRoof, 1000);
 })();
