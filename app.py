@@ -207,13 +207,13 @@ async def events(request: Request):
         queue = asyncio.Queue(maxsize=1)
         request.app.state.subscribers.add(queue)
         try:
-            yield f"data: {json.dumps(request.app.state.roof_display)}\\n\\n".replace("\\\\n", "\\n")
+            yield f"data: {json.dumps(request.app.state.roof_display)}\n\n"
             while True:
                 try:
                     display = await asyncio.wait_for(queue.get(), timeout=20)
-                    yield f"data: {json.dumps(display)}\\n\\n".replace("\\\\n", "\\n")
+                    yield f"data: {json.dumps(display)}\n\n"
                 except asyncio.TimeoutError:
-                    yield ": keepalive\\n\\n".replace("\\\\n", "\\n")
+                    yield ": keepalive\n\n"
         finally:
             request.app.state.subscribers.discard(queue)
 
