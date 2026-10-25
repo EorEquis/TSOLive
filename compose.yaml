@@ -5,5 +5,11 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "80:80"
+    networks:
+      - default
+      - tristar-proxy
+
+networks:
+  tristar-proxy:
+    external: true
+    name: tristar-nginx_default
