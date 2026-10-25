@@ -857,3 +857,15 @@ main { padding-top: 30px; }
     gap: 10px 16px;
   }
 }
+
+
+/* Weather tile: compact two-column readouts in the existing 4x3 layout. */
+.weather-readouts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.weather-readout { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.weather-readout .metric-label { margin: 0; }
+.weather-readout strong { font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+.weather-readout .weather-trend { color: var(--muted); font-size: 11px; }
+@media (min-width: 1251px) {
+  .weather-readouts { gap: 7px 10px; }
+  .weather-readout strong { font-size: 12px; }
+}

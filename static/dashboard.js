@@ -14,7 +14,7 @@
   const connection = document.getElementById("roof-connection");
   const connectionText = document.getElementById("roof-connection-text");
   const connectionDot = document.getElementById("roof-connection-dot");
-  if (!position || !updated || !connection) return;
+
 
   function setConnection(online) {
     connectionText.textContent = online ? "ONLINE" : "OFFLINE";
@@ -25,11 +25,31 @@
   const events = new EventSource("/events");
   events.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    if (data.system !== "roof") return;
-    setConnection(data.online === true);
-    if (!data.online) return;
-    position.textContent = data.position;
-    updated.textContent = "Last Update : " + data.timestamp.slice(0, 19).replace("T", " ") + "Z";
+    if (data.system === "roof") {
+      setConnection(data.online === true);
+      if (!data.online) return;
+      position.textContent = data.position;
+      updated.textContent = "Last Update : " + data.timestamp.slice(0, 19).replace("T", " ") + "Z";
+    } else if (data.system === "weather") {
+      const tag = document.getElementById("weather-connection");
+      const dot = document.getElementById("weather-connection-dot");
+      const label = document.getElementById("weather-connection-text");
+      const online = data.online === true;
+      tag.classList.toggle("offline", !online);
+      dot.classList.toggle("offline-dot", !online);
+      label.textContent = online ? "ONLINE" : "OFFLINE";
+      for (const field of ["temperature", "wind", "sky", "moisture", "time_of_day", "pressure", "pressure_trend"]) {
+        const el = document.getElementById("weather-" + field.replaceAll("_", "-"));
+        if (el) el.textContent = online ? (data[field] ?? "N/A") : "N/A";
+      }
+      if (online && data.timestamp) document.getElementById("weather-last-update").textContent = "Last Update : " + data.timestamp.slice(0, 19).replace("T", " ") + "Z";
+    }
   };
-  events.onerror = () => setConnection(false);
+  events.onerror = () => {
+    setConnection(false);
+    const tag = document.getElementById("weather-connection");
+    tag.classList.add("offline");
+    document.getElementById("weather-connection-dot").classList.add("offline-dot");
+    document.getElementById("weather-connection-text").textContent = "OFFLINE";
+  };
 })();

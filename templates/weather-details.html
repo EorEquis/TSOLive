@@ -1,0 +1,15 @@
+{% extends "details-base.html" %}
+{% block title %}Weather Details{% endblock %}
+{% block primary_label %}CURRENT CONDITIONS{% endblock %}
+{% block panels %}
+{% for title, fields in [
+("Atmosphere", [("Air Temperature","air-temperature"),("Humidity","humidity"),("Dew Point","dew-point"),("Station Pressure","station-pressure"),("Sea-Level Pressure","sea-pressure"),("Pressure Trend","pressure-trend")]),
+("Wind", [("Current Speed","wind-speed"),("Direction","wind-direction"),("10-Minute Gust","gust-10min"),("Hourly Gust","gust-hour"),("Today's Gust","gust-today")]),
+("Sky Conditions", [("Sky Temperature","sky-temperature"),("Ambient / Sky Delta","sky-delta"),("Sky Assessment","sky-assessment"),("Ground Temperature","ground-temperature"),("Time of Day","time-of-day"),("Light Sensor Raw","light-value"),("Light State","light-state")]),
+("Precipitation & Moisture", [("Moisture State","moisture-state"),("Wet Sensor Raw","wet-value"),("Rain Rate","rain-rate"),("Rain This Hour","rain-hourly"),("Rain Today","rain-daily")])
+] %}
+<section class="details-panel"><h3>{{ title }}</h3><dl class="details-values">
+{% for label, id in fields %}<div><dt>{{ label }}</dt><dd id="{{ id }}">N/A</dd></div>{% endfor %}
+</dl></section>
+{% endfor %}
+{% endblock %}
