@@ -19,7 +19,7 @@
   const events = new EventSource("/events");
   events.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    const page = document.body.dataset.system;
+    const page = new URLSearchParams(window.location.search).get("system");
     if (data.system !== page) return;
     connection(data.online === true);
     if (!data.online) return;
