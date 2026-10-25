@@ -21,7 +21,7 @@ from astral.sun import elevation
 import pymysql
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -304,10 +304,9 @@ OVERVIEW_SYSTEMS = [
     {"id": "weather", "name": "Weather", "icon": "☁", "source": "Weather Station",
      "last_update": "—", "live": True, "details_enabled": True,
      "aria_label": "Weather system", "body_template": "tiles/weather.html"},
-    {"id": "allsky", "name": "AllSky", "icon": "✦", "source": None,
-     "last_update": "—", "live": False, "details_enabled": False,
-     "placeholder": True, "aria_label": "AllSky integration planned",
-     "body_template": "tiles/placeholder.html"},
+    {"id": "allsky", "name": "AllSky", "icon": "✦", "source": "AllSky Camera",
+     "last_update": "—", "live": True, "details_enabled": False,
+     "aria_label": "Current AllSky image", "body_template": "tiles/allsky.html"},
     {"id": "guiding", "name": "Guiding", "icon": "⊕", "source": None,
      "last_update": "—", "live": False, "details_enabled": False,
      "placeholder": True, "aria_label": "Guiding integration planned",
@@ -355,6 +354,27 @@ def _read_roofrunner():
         raise ValueError("RoofRunner response is missing telemetry fields")
     return payload
 
+
+
+@app.get("/allsky/current.jpg")
+async def allsky_current():
+    """Proxy the latest image so browsers do not need access to the camera LAN."""
+    host = os.getenv("ALLSKY_IP", "").strip()
+    if not host:
+        return Response(status_code=503)
+    url = "http://" + host + "/current/image.jpg"
+    try:
+        def fetch():
+            with urlopen(URLRequest(url, method="GET"), timeout=8) as upstream:
+                if not upstream.headers.get("Content-Type", "").lower().startswith("image/jpeg"):
+                    raise ValueError("AllSky did not return a JPEG")
+                return upstream.read(12 * 1024 * 1024 + 1)
+        image = await asyncio.to_thread(fetch)
+        if len(image) > 12 * 1024 * 1024:
+            raise ValueError("AllSky image exceeds size limit")
+    except (OSError, ValueError, HTTPError, URLError, TimeoutError):
+        return Response(status_code=503, headers={"Cache-Control": "no-store"})
+    return Response(content=image, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 @app.get("/events")
 async def events(request: Request):
