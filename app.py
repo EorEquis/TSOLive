@@ -178,6 +178,38 @@ def _weather_display(payload, trend):
         wind_text = f"{wind * 2.2369362921:.1f} mph"
         wind_text += " " + compass[int((direction % 360 + 11.25) // 22.5) % 16] if direction is not None else " N/A"
     moisture = ("RAINING" if rain > 0 else "WET" if wet is True else "DRY" if wet is False else "N/A") if rain is not None else "N/A"
+    def val(key, sensor, precision=1, unit=""):
+        n = _number(payload.get(key)) if available(sensor) else None
+        return f"{n:.{precision}f}{unit}" if n is not None else "N/A"
+    def mph(key):
+        n = _number(payload.get(key)) if available("anemometer") else None
+        return f"{n * 2.2369362921:.1f} mph" if n is not None else "N/A"
+    dark = payload.get("is_dark") if available("lm393_light") else None
+    details = {
+        "air-temperature": val("temp_c", "bme280", 1, "°C"),
+        "humidity": val("humidity_pct", "bme280", 1, "%"),
+        "dew-point": val("dew_point_c", "bme280", 1, "°C"),
+        "station-pressure": val("pressure_hpa", "bme280", 2, " hPa"),
+        "sea-pressure": f"{pressure * 0.0295299831:.2f} inHg" if pressure is not None else "N/A",
+        "pressure-trend": trend,
+        "wind-speed": mph("wind_speed_mps"),
+        "wind-direction": f"{compass[int((direction % 360 + 11.25) // 22.5) % 16]} ({direction:.1f}°)" if direction is not None else "N/A",
+        "gust-10min": mph("wind_gust_10min"),
+        "gust-hour": mph("wind_gust_hour"),
+        "gust-today": mph("wind_gust_today"),
+        "sky-temperature": val("sky_temperature_c", "mlx90614_1", 1, "°C"),
+        "sky-delta": f"{temp - sky:.1f}°C" if temp is not None and sky is not None else "N/A",
+        "sky-assessment": ("CLEAR" if temp - sky > 20 else "CLOUDY") if temp is not None and sky is not None else "N/A",
+        "ground-temperature": val("ground_temperature_c", "mlx90614_2", 1, "°C"),
+        "time-of-day": _weather_daytime(),
+        "light-value": val("light_value", "lm393_light", 0),
+        "light-state": ("DARK" if dark else "LIGHT") if isinstance(dark, bool) else "N/A",
+        "moisture-state": moisture,
+        "wet-value": val("wet_value", "lm393_rain", 0),
+        "rain-rate": val("rain_rate_mm_hr", "rainbucket", 2, " mm/hr"),
+        "rain-hourly": val("rain_hourly_mm", "rainbucket", 2, " mm"),
+        "rain-daily": val("rain_daily_mm", "rainbucket", 2, " mm"),
+    }
     return {
         "system": "weather", "online": True, "timestamp": payload["timestamp"],
         "temperature": f"{temp:.1f}°C" if temp is not None else "N/A",
@@ -187,6 +219,7 @@ def _weather_display(payload, trend):
         "time_of_day": _weather_daytime(),
         "pressure": f"{pressure * 0.0295299831:.2f} inHg" if pressure is not None else "N/A",
         "pressure_trend": trend,
+        "details": details,
     }
 
 
@@ -248,6 +281,7 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 # Detail views share a common layout; each system supplies its own panels and telemetry adapter.
 DETAIL_SYSTEMS = {
     "roof": {"template": "roof-details.html", "label": "Roof", "source": "RoofRunner"},
+    "weather": {"template": "weather-details.html", "label": "Weather", "source": "Weather Station"},
 }
 
 
@@ -268,7 +302,7 @@ OVERVIEW_SYSTEMS = [
      "placeholder": True, "aria_label": "Filter Wheel integration planned",
      "body_template": "tiles/placeholder.html"},
     {"id": "weather", "name": "Weather", "icon": "☁", "source": "Weather Station",
-     "last_update": "—", "live": True, "details_enabled": False,
+     "last_update": "—", "live": True, "details_enabled": True,
      "aria_label": "Weather system", "body_template": "tiles/weather.html"},
     {"id": "allsky", "name": "AllSky", "icon": "✦", "source": None,
      "last_update": "—", "live": False, "details_enabled": False,
