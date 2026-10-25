@@ -8,6 +8,7 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -15,7 +16,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request as URLRequest, urlopen
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -28,18 +29,86 @@ def _poll_interval():
         return 5.0
 
 
+def _roof_position(t, controller):
+    if controller.get("state") == "HALTED":
+        return "HALTED"
+    if t.get("open_limit_active") and not t.get("closed_limit_active"):
+        return "OPEN"
+    if t.get("closed_limit_active") and not t.get("open_limit_active"):
+        return "CLOSED"
+    if t.get("open_limit_active") and t.get("closed_limit_active"):
+        return "HALTED"
+    speed = t.get("current_speed")
+    if isinstance(speed, (int, float)):
+        if speed > 0:
+            return "OPENING"
+        if speed < 0:
+            return "CLOSING"
+    return "HALTED"
+
+
+def _flag(value):
+    return ("ACTIVE" if value else "INACTIVE") if isinstance(value, bool) else "—"
+
+
+def _fixed(value, divisor, digits, unit):
+    return f"{value / divisor:.{digits}f} {unit}" if isinstance(value, (int, float)) else "—"
+
+
+def _uptime(ms):
+    if not isinstance(ms, (int, float)):
+        return "—"
+    seconds = max(0, int(ms // 1000))
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    return (f"{days}d " if days else "") + f"{hours}h {minutes}m {seconds}s"
+
+
+def _roof_display(payload):
+    t = payload["telemetry"]
+    c = payload.get("controller") or {}
+    return {
+        "system": "roof",
+        "online": True,
+        "timestamp": payload["timestamp_utc"],
+        "position": _roof_position(t, c),
+        "details": {
+            "controller-state": c.get("state"),
+            "movement-allowed": ("YES" if c["movement_allowed"] else "NO") if isinstance(c.get("movement_allowed"), bool) else "—",
+            "controller-reason": c.get("reason") or "None",
+            "error-status": t.get("error_status"),
+            "open-limit": _flag(t.get("open_limit_active")),
+            "closed-limit": _flag(t.get("closed_limit_active")),
+            "limit-status": t.get("limit_status"),
+            "target-speed": t.get("target_speed"),
+            "current-speed": t.get("current_speed"),
+            "motor-current": _fixed(t.get("motor_current_ma"), 1, 0, "mA"),
+            "input-voltage": _fixed(t.get("input_voltage_mv"), 1000, 3, "V"),
+            "temperature": _fixed(t.get("temperature_tenths_c"), 10, 1, "°C"),
+            "uptime": _uptime(t.get("uptime_ms")),
+        },
+    }
+
+
 async def _poll_roofrunner(app):
     while True:
         try:
-            app.state.roofrunner_payload = await asyncio.to_thread(_read_roofrunner)
-        except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
-            app.state.roofrunner_payload = None
+            display = _roof_display(await asyncio.to_thread(_read_roofrunner))
+        except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError, KeyError, TypeError):
+            display = {"system": "roof", "online": False}
+        app.state.roof_display = display
+        for queue in tuple(app.state.subscribers):
+            if queue.full():
+                queue.get_nowait()
+            queue.put_nowait(display)
         await asyncio.sleep(_poll_interval())
 
 
 @asynccontextmanager
 async def lifespan(app):
-    app.state.roofrunner_payload = None
+    app.state.roof_display = {"system": "roof", "online": False}
+    app.state.subscribers = set()
     task = asyncio.create_task(_poll_roofrunner(app))
     try:
         yield
@@ -49,7 +118,6 @@ async def lifespan(app):
             await task
         except asyncio.CancelledError:
             pass
-
 
 app = FastAPI(title="TSOLive", description="Read-only observatory telemetry", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
@@ -133,12 +201,23 @@ def _read_roofrunner():
     return payload
 
 
-@app.get("/api/roofrunner/telemetry")
-async def roofrunner_telemetry(request: Request):
-    payload = request.app.state.roofrunner_payload
-    if payload is None:
-        return JSONResponse(status_code=503, content={"success": False})
-    return payload
+@app.get("/events")
+async def events(request: Request):
+    async def stream():
+        queue = asyncio.Queue(maxsize=1)
+        request.app.state.subscribers.add(queue)
+        try:
+            yield f"data: {json.dumps(request.app.state.roof_display)}\\n\\n".replace("\\\\n", "\\n")
+            while True:
+                try:
+                    display = await asyncio.wait_for(queue.get(), timeout=20)
+                    yield f"data: {json.dumps(display)}\\n\\n".replace("\\\\n", "\\n")
+                except asyncio.TimeoutError:
+                    yield ": keepalive\\n\\n".replace("\\\\n", "\\n")
+        finally:
+            request.app.state.subscribers.discard(queue)
+
+    return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.get("/details", response_class=HTMLResponse)
