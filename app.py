@@ -7,6 +7,7 @@
 ###########################################################################
 
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import os
 from pathlib import Path
@@ -19,7 +20,38 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 BASE_DIR = Path(__file__).resolve().parent
-app = FastAPI(title="TSOLive", description="Read-only observatory telemetry")
+
+def _poll_interval():
+    try:
+        return max(1000, int(os.getenv("ROOFRUNNER_POLL_FREQ_MS", "5000"))) / 1000
+    except ValueError:
+        return 5.0
+
+
+async def _poll_roofrunner(app):
+    while True:
+        try:
+            app.state.roofrunner_payload = await asyncio.to_thread(_read_roofrunner)
+        except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+            app.state.roofrunner_payload = None
+        await asyncio.sleep(_poll_interval())
+
+
+@asynccontextmanager
+async def lifespan(app):
+    app.state.roofrunner_payload = None
+    task = asyncio.create_task(_poll_roofrunner(app))
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+
+app = FastAPI(title="TSOLive", description="Read-only observatory telemetry", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
@@ -87,15 +119,6 @@ async def homepage(request: Request):
     )
 
 
-@app.get("/api/dashboard-config")
-async def dashboard_config():
-    try:
-        interval = int(os.getenv("ROOFRUNNER_POLL_FREQ_MS", "5000"))
-    except ValueError:
-        interval = 5000
-    return {"roofrunner_poll_freq_ms": max(1000, interval)}
-
-
 def _read_roofrunner():
     base = os.getenv("ROOFRUNNER_API_URL", "").rstrip("/")
     if not base:
@@ -111,11 +134,11 @@ def _read_roofrunner():
 
 
 @app.get("/api/roofrunner/telemetry")
-async def roofrunner_telemetry():
-    try:
-        return await asyncio.to_thread(_read_roofrunner)
-    except (OSError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+async def roofrunner_telemetry(request: Request):
+    payload = request.app.state.roofrunner_payload
+    if payload is None:
         return JSONResponse(status_code=503, content={"success": False})
+    return payload
 
 
 @app.get("/details", response_class=HTMLResponse)
