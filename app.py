@@ -8,9 +8,10 @@
 
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
 import os
+import secrets
 import math
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -20,7 +21,7 @@ from astral import Observer
 from astral.sun import elevation
 import pymysql
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -223,6 +224,32 @@ def _weather_display(payload, trend):
     }
 
 
+
+def _allsky_timeout():
+    try:
+        return max(1, int(os.getenv("ALLSKY_HEARTBEAT_SECONDS", "300")))
+    except ValueError:
+        return 300
+
+
+def _allsky_status(app):
+    last = app.state.allsky_last
+    online = last is not None and (datetime.now(timezone.utc) - last).total_seconds() < _allsky_timeout()
+    return {"system": "allsky", "online": online,
+            "timestamp": last.isoformat().replace("+00:00", "Z") if last else None,
+            "image_version": app.state.allsky_version if app.state.allsky_image is not None else None}
+
+
+async def _monitor_allsky(app):
+    previous = None
+    while True:
+        display = _allsky_status(app)
+        if display["online"] != previous:
+            _publish(app, display)
+            previous = display["online"]
+        await asyncio.sleep(5)
+
+
 async def _poll_weather(app):
     trend = "N/A"
     next_trend = 0.0
@@ -266,7 +293,10 @@ async def lifespan(app):
     app.state.roof_display = {"system": "roof", "online": False}
     app.state.weather_display = {"system": "weather", "online": False}
     app.state.subscribers = set()
-    tasks = [asyncio.create_task(_poll_roofrunner(app)), asyncio.create_task(_poll_weather(app))]
+    app.state.allsky_last = None
+    app.state.allsky_image = None
+    app.state.allsky_version = 0
+    tasks = [asyncio.create_task(_poll_roofrunner(app)), asyncio.create_task(_poll_weather(app)), asyncio.create_task(_monitor_allsky(app))]
     try:
         yield
     finally:
@@ -356,25 +386,43 @@ def _read_roofrunner():
 
 
 
-@app.get("/allsky/current.jpg")
-async def allsky_current():
-    """Proxy the latest image so browsers do not need access to the camera LAN."""
+def _fetch_allsky_image():
     host = os.getenv("ALLSKY_IP", "").strip()
     if not host:
-        return Response(status_code=503)
-    url = "http://" + host + "/current/image.jpg"
+        raise ValueError("ALLSKY_IP is not configured")
+    with urlopen(URLRequest("http://" + host + "/current/image.jpg", method="GET"), timeout=8) as upstream:
+        if not upstream.headers.get("Content-Type", "").lower().startswith("image/jpeg"):
+            raise ValueError("AllSky did not return a JPEG")
+        image = upstream.read(12 * 1024 * 1024 + 1)
+    if len(image) > 12 * 1024 * 1024:
+        raise ValueError("AllSky image exceeds size limit")
+    return image
+
+
+@app.post("/allsky/notify/{token}")
+async def allsky_notify(token: str, request: Request):
+    """Allsky Publish Data POST triggers a new image fetch and heartbeat."""
+    expected = os.getenv("ALLSKY_POST_TOKEN", "")
+    if not expected or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=403, detail="Invalid AllSky token")
     try:
-        def fetch():
-            with urlopen(URLRequest(url, method="GET"), timeout=8) as upstream:
-                if not upstream.headers.get("Content-Type", "").lower().startswith("image/jpeg"):
-                    raise ValueError("AllSky did not return a JPEG")
-                return upstream.read(12 * 1024 * 1024 + 1)
-        image = await asyncio.to_thread(fetch)
-        if len(image) > 12 * 1024 * 1024:
-            raise ValueError("AllSky image exceeds size limit")
-    except (OSError, ValueError, HTTPError, URLError, TimeoutError):
+        image = await asyncio.to_thread(_fetch_allsky_image)
+    except (OSError, ValueError, HTTPError, URLError, TimeoutError) as exc:
+        raise HTTPException(status_code=503, detail="Unable to retrieve AllSky image") from exc
+    request.app.state.allsky_image = image
+    request.app.state.allsky_last = datetime.now(timezone.utc)
+    request.app.state.allsky_version += 1
+    _publish(request.app, _allsky_status(request.app))
+    return {"ok": True}
+
+
+@app.get("/allsky/current.jpg")
+async def allsky_current(request: Request):
+    image = request.app.state.allsky_image
+    if image is None:
         return Response(status_code=503, headers={"Cache-Control": "no-store"})
     return Response(content=image, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
 
 @app.get("/events")
 async def events(request: Request):
