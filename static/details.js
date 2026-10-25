@@ -19,12 +19,13 @@
   const events = new EventSource("/events");
   events.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    if (data.system !== "roof") return;
+    const page = document.body.dataset.system;
+    if (data.system !== page) return;
     connection(data.online === true);
     if (!data.online) return;
-    put("details-primary", data.position);
+    put("details-primary", page === "roof" ? data.position : (data.sky || "N/A") + " / " + (data.moisture || "N/A"));
     put("details-last-update", data.timestamp.slice(0, 19).replace("T", " ") + "Z");
-    for (const [id, value] of Object.entries(data.details)) put(id, value);
+    for (const [id, value] of Object.entries(data.details || {})) put(id, value);
   };
   events.onerror = () => connection(false);
 })();
