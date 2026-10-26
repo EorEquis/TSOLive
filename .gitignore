@@ -33,3 +33,6 @@ Thumbs.db
 *.tmp
 *.swp
 *~
+
+# airline logos
+/static/airline-logos/
