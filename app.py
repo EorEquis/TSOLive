@@ -10,6 +10,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
 import json
+import logging
 import os
 import secrets
 import math
@@ -26,6 +27,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 
 def _poll_interval():
@@ -276,6 +278,61 @@ async def _poll_weather(app):
         await asyncio.sleep(_weather_interval())
 
 
+def _adsb_interval():
+    try:
+        return max(1000, int(os.getenv("ADSB_POLL_FREQ_MS", "5000"))) / 1000
+    except ValueError:
+        return 5.0
+
+
+def _read_adsb():
+    url = os.environ["ADSB_JSON_URL"].strip()
+    with urlopen(URLRequest(url, method="GET"), timeout=5) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict) or not isinstance(payload.get("aircraft"), list):
+        raise ValueError("ADS-B feed has no aircraft array")
+    return payload
+
+
+def _adsb_display(payload):
+    aircraft = [a for a in payload["aircraft"] if isinstance(a, dict)]
+    positioned = [a for a in aircraft if _number(a.get("lat")) is not None
+                  and _number(a.get("lon")) is not None
+                  and -90 <= a["lat"] <= 90 and -180 <= a["lon"] <= 180]
+    result = {"system": "adsb", "online": True,
+              "aircraft_count": len(aircraft), "position_count": len(positioned),
+              "nearest": None, "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
+    if positioned:
+        lat = math.radians(float(os.environ["OBSERVATORY_LAT"]))
+        lon = math.radians(float(os.environ["OBSERVATORY_LON"]))
+        def distance(a):
+            alat, alon = math.radians(a["lat"]), math.radians(a["lon"])
+            h = math.sin((alat - lat) / 2) ** 2 + math.cos(lat) * math.cos(alat) * math.sin((alon - lon) / 2) ** 2
+            return 3958.7613 * 2 * math.asin(min(1, math.sqrt(h)))
+        nearest = min(positioned, key=distance)
+        altitude = _number(nearest.get("alt_baro"))
+        speed = _number(nearest.get("gs"))
+        result["nearest"] = {
+            "callsign": str(nearest.get("flight") or "").strip() or str(nearest.get("hex") or "UNKNOWN").upper(),
+            "distance": f"{distance(nearest):.1f} mi",
+            "altitude": f"{altitude:,.0f} ft" if altitude is not None else ("GROUND" if nearest.get("alt_baro") == "ground" else "N/A"),
+            "speed": f"{speed:.0f} kt" if speed is not None else "N/A",
+        }
+    return result
+
+
+async def _poll_adsb(app):
+    while True:
+        try:
+            display = _adsb_display(await asyncio.to_thread(_read_adsb))
+        except Exception:
+            logger.exception("ADS-B polling failed")
+            display = {"system": "adsb", "online": False}
+        app.state.adsb_display = display
+        _publish(app, display)
+        await asyncio.sleep(_adsb_interval())
+
+
 def _publish(app, display):
     for queue in tuple(app.state.subscribers):
         if queue.full():
@@ -298,11 +355,12 @@ async def _poll_roofrunner(app):
 async def lifespan(app):
     app.state.roof_display = {"system": "roof", "online": False}
     app.state.weather_display = {"system": "weather", "online": False}
+    app.state.adsb_display = {"system": "adsb", "online": False}
     app.state.subscribers = set()
     app.state.allsky_last = None
     app.state.allsky_image = None
     app.state.allsky_version = 0
-    tasks = [asyncio.create_task(_poll_roofrunner(app)), asyncio.create_task(_poll_weather(app)), asyncio.create_task(_monitor_allsky(app))]
+    tasks = [asyncio.create_task(_poll_roofrunner(app)), asyncio.create_task(_poll_weather(app)), asyncio.create_task(_monitor_allsky(app)), asyncio.create_task(_poll_adsb(app))]
     try:
         yield
     finally:
@@ -324,10 +382,9 @@ DETAIL_SYSTEMS = {
 # Homepage ordering and metadata live here. Shared markup is in _system_tile.html;
 # each system's overview-specific content is in templates/tiles/.
 OVERVIEW_SYSTEMS = [
-    {"id": "adsb", "name": "ADS-B", "icon": "✈", "source": None,
-     "last_update": "—", "live": False, "details_enabled": False,
-     "placeholder": True, "aria_label": "ADS-B integration planned",
-     "body_template": "tiles/placeholder.html"},
+    {"id": "adsb", "name": "ADS-B", "icon": "✈", "source": "PiAware",
+     "last_update": "—", "live": True, "details_enabled": False,
+     "aria_label": "ADS-B aircraft telemetry", "body_template": "tiles/adsb.html"},
     {"id": "allsky", "name": "AllSky", "icon": "✦", "source": "AllSky Camera",
      "last_update": "—", "live": True, "details_enabled": False,
      "aria_label": "Current AllSky image", "body_template": "tiles/allsky.html"},
@@ -432,6 +489,7 @@ async def events(request: Request):
         try:
             yield f"data: {json.dumps(request.app.state.roof_display)}\n\n"
             yield f"data: {json.dumps(request.app.state.weather_display)}\n\n"
+            yield f"data: {json.dumps(request.app.state.adsb_display)}\n\n"
             yield f"data: {json.dumps(_allsky_status(request.app))}\n\n"
             while True:
                 try:
