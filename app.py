@@ -168,13 +168,14 @@ def _weather_display(payload, trend):
     status = payload.get("status") or {}
     sky_clear_delta = _sky_clear_delta()
     def available(sensor):
-        return status.get("system") == "available" and status.get(sensor) == "available"
+        return status.get(sensor) == "available"
 
     temp = _number(payload.get("temp_c")) if available("bme280") else None
     sky = _number(payload.get("sky_temperature_c")) if available("mlx90614_1") else None
     wind = _number(payload.get("wind_speed_mps")) if available("anemometer") else None
     direction = _number(payload.get("wind_dir_deg")) if available("windvane") else None
     pressure = _number(payload.get("pressure_sealevel_hpa")) if available("bme280") else None
+    station_pressure = _number(payload.get("pressure_hpa")) if available("bme280") else None
     rain = _number(payload.get("rain_rate_mm_hr")) if available("rainbucket") else None
     wet = payload.get("is_wet") if available("lm393_rain") else None
     compass = ("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
@@ -183,7 +184,7 @@ def _weather_display(payload, trend):
     if wind is not None:
         wind_text = f"{wind * 2.2369362921:.1f} mph"
         wind_text += " " + compass[int((direction % 360 + 11.25) // 22.5) % 16] if direction is not None else " N/A"
-    moisture = ("RAINING" if rain > 0 else "WET" if wet is True else "DRY" if wet is False else "N/A") if rain is not None else "N/A"
+    moisture = "RAINING" if rain is not None and rain > 0 else "WET" if wet is True else "DRY" if wet is False else "N/A"
     def val(key, sensor, precision=1, unit=""):
         n = _number(payload.get(key)) if available(sensor) else None
         return f"{n:.{precision}f}{unit}" if n is not None else "N/A"
@@ -195,7 +196,7 @@ def _weather_display(payload, trend):
         "air-temperature": val("temp_c", "bme280", 1, "°C"),
         "humidity": val("humidity_pct", "bme280", 1, "%"),
         "dew-point": val("dew_point_c", "bme280", 1, "°C"),
-        "station-pressure": val("pressure_hpa", "bme280", 2, " hPa"),
+        "station-pressure": f"{station_pressure * 0.0295299831:.2f} inHg" if station_pressure is not None else "N/A",
         "sea-pressure": f"{pressure * 0.0295299831:.2f} inHg" if pressure is not None else "N/A",
         "pressure-trend": trend,
         "wind-speed": mph("wind_speed_mps"),
