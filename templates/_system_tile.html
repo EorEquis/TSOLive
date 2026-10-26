@@ -26,6 +26,8 @@
     <a class="foot-right details-link" href="/details?system={{ tile.id }}">DETAILS <span aria-hidden="true">↗</span></a>
     {% elif tile.placeholder %}
     <span class="foot-right">PLACEHOLDER</span>
+    {% elif tile.id == "adsb" %}
+    <span class="foot-right">LIVE DATA</span>
     {% elif tile.id == "allsky" %}
     <span class="foot-right">LIVE IMAGE</span>
     {% else %}

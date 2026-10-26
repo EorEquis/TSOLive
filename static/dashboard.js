@@ -22,6 +22,19 @@
     if (connectionDot) connectionDot.classList.toggle("offline-dot", !online);
   }
 
+  const airlineLogo = document.getElementById("adsb-airline-logo");
+  let airlineLogoCode = null;
+  function updateAirlineLogo(callsign) {
+    const code = typeof callsign === "string" ? /^([A-Z]{3})\d/i.exec(callsign.trim())?.[1].toUpperCase() : null;
+    if (code === airlineLogoCode) return;
+    airlineLogoCode = code;
+    airlineLogo.hidden = true;
+    airlineLogo.removeAttribute("src");
+    if (code) airlineLogo.src = "/static/airline-logos/" + code + ".png";
+  }
+  airlineLogo.onload = () => { airlineLogo.hidden = false; };
+  airlineLogo.onerror = () => { airlineLogo.hidden = true; };
+
   const events = new EventSource("/events");
   events.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -53,6 +66,27 @@
         };
         preload.src = "/allsky/current.jpg?v=" + encodeURIComponent(version);
       }
+    } else if (data.system === "adsb") {
+      const online = data.online === true;
+      const tag = document.getElementById("adsb-connection");
+      tag.classList.toggle("offline", !online);
+      document.getElementById("adsb-connection-dot").classList.toggle("offline-dot", !online);
+      document.getElementById("adsb-connection-text").textContent = online ? "ONLINE" : "OFFLINE";
+      const nearest = online ? data.nearest : null;
+      updateAirlineLogo(nearest?.callsign);
+      const values = {
+        "aircraft-count": online ? data.aircraft_count : "—",
+        "position-count": online ? data.position_count : "—",
+        "nearest-callsign": nearest?.callsign ?? "—",
+        "nearest-distance": nearest?.distance ?? "—",
+        "nearest-altitude": nearest?.altitude ?? "—",
+        "nearest-speed": nearest?.speed ?? "—"
+      };
+      for (const [field, value] of Object.entries(values)) {
+        document.getElementById("adsb-" + field).textContent = value;
+      }
+      if (online && data.timestamp) document.getElementById("adsb-last-update").textContent =
+        "Last Update : " + data.timestamp.slice(0, 19).replace("T", " ") + "Z";
     } else if (data.system === "weather") {
       const tag = document.getElementById("weather-connection");
       const dot = document.getElementById("weather-connection-dot");
@@ -70,6 +104,10 @@
   };
   events.onerror = () => {
     setConnection(false);
+    updateAirlineLogo(null);
+    document.getElementById("adsb-connection").classList.add("offline");
+    document.getElementById("adsb-connection-dot").classList.add("offline-dot");
+    document.getElementById("adsb-connection-text").textContent = "OFFLINE";
     document.getElementById("allsky-connection").classList.add("offline");
     document.getElementById("allsky-connection-dot").classList.add("offline-dot");
     document.getElementById("allsky-connection-text").textContent = "OFFLINE";
