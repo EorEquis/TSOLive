@@ -22,6 +22,19 @@
     if (connectionDot) connectionDot.classList.toggle("offline-dot", !online);
   }
 
+  const airlineLogo = document.getElementById("adsb-airline-logo");
+  let airlineLogoCode = null;
+  function updateAirlineLogo(callsign) {
+    const code = typeof callsign === "string" ? /^([A-Z]{3})\d/i.exec(callsign.trim())?.[1].toUpperCase() : null;
+    if (code === airlineLogoCode) return;
+    airlineLogoCode = code;
+    airlineLogo.hidden = true;
+    airlineLogo.removeAttribute("src");
+    if (code) airlineLogo.src = "/static/airline-logos/" + code + ".png";
+  }
+  airlineLogo.onload = () => { airlineLogo.hidden = false; };
+  airlineLogo.onerror = () => { airlineLogo.hidden = true; };
+
   const events = new EventSource("/events");
   events.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -60,6 +73,7 @@
       document.getElementById("adsb-connection-dot").classList.toggle("offline-dot", !online);
       document.getElementById("adsb-connection-text").textContent = online ? "ONLINE" : "OFFLINE";
       const nearest = online ? data.nearest : null;
+      updateAirlineLogo(nearest?.callsign);
       const values = {
         "aircraft-count": online ? data.aircraft_count : "—",
         "position-count": online ? data.position_count : "—",
@@ -90,6 +104,7 @@
   };
   events.onerror = () => {
     setConnection(false);
+    updateAirlineLogo(null);
     document.getElementById("adsb-connection").classList.add("offline");
     document.getElementById("adsb-connection-dot").classList.add("offline-dot");
     document.getElementById("adsb-connection-text").textContent = "OFFLINE";
