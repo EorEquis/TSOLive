@@ -160,8 +160,13 @@ def _read_weather():
     return payload
 
 
+def _sky_clear_delta():
+    return float(os.getenv("SKY_CLEAR_DELTA_C", "18"))
+
+
 def _weather_display(payload, trend):
     status = payload.get("status") or {}
+    sky_clear_delta = _sky_clear_delta()
     def available(sensor):
         return status.get("system") == "available" and status.get(sensor) == "available"
 
@@ -200,7 +205,7 @@ def _weather_display(payload, trend):
         "gust-today": mph("wind_gust_today"),
         "sky-temperature": val("sky_temperature_c", "mlx90614_1", 1, "°C"),
         "sky-delta": f"{temp - sky:.1f}°C" if temp is not None and sky is not None else "N/A",
-        "sky-assessment": ("CLEAR" if temp - sky > 20 else "CLOUDY") if temp is not None and sky is not None else "N/A",
+        "sky-assessment": ("CLEAR" if temp - sky > sky_clear_delta else "CLOUDY") if temp is not None and sky is not None else "N/A",
         "ground-temperature": val("ground_temperature_c", "mlx90614_2", 1, "°C"),
         "time-of-day": _weather_daytime(),
         "light-value": val("light_value", "lm393_light", 0),
@@ -215,7 +220,7 @@ def _weather_display(payload, trend):
         "system": "weather", "online": True, "timestamp": payload["timestamp"],
         "temperature": f"{temp:.1f}°C" if temp is not None else "N/A",
         "wind": wind_text,
-        "sky": ("CLEAR" if temp - sky > 20 else "CLOUDY") if temp is not None and sky is not None else "N/A",
+        "sky": ("CLEAR" if temp - sky > sky_clear_delta else "CLOUDY") if temp is not None and sky is not None else "N/A",
         "moisture": moisture,
         "time_of_day": _weather_daytime(),
         "pressure": f"{pressure * 0.0295299831:.2f} inHg" if pressure is not None else "N/A",
